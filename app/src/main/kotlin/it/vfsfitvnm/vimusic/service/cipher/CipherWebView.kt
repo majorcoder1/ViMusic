@@ -106,9 +106,16 @@ class CipherWebView private constructor(private val webView: WebView) {
                     }
                 }, "CipherReady")
 
+                val prepared = withContext(Dispatchers.IO) { prepareScript(info) }
+                if (prepared == null) {
+                    Log.e(TAG, "could not prepare player script")
+                    runCatching { webView.destroy() }
+                    return@withContext null
+                }
+
                 webView.loadDataWithBaseURL(
-                    "file://${info.script.parentFile?.absolutePath}/",
-                    buildHtml(info),
+                    "file://${prepared.parentFile?.absolutePath}/",
+                    buildHtml(prepared.name),
                     "text/html",
                     "utf-8",
                     null
@@ -123,21 +130,45 @@ class CipherWebView private constructor(private val webView: WebView) {
                 instance
             }
 
-        private fun buildHtml(info: PlayerJs.Info): String {
-            // The registry gives an expression with INPUT standing in for the argument; the
-            // implementation itself comes from the player script loaded above.
+        /**
+         * Writes a copy of the player script with the two entry points exported.
+         *
+         * The script body is wrapped in `(function(g){ ... })(_yt_player)`, so the signature
+         * function and the URL class only exist inside that closure. Exporting from a separate
+         * script tag cannot see them; the assignments have to be injected before the closing call
+         * so they run in the player's own scope.
+         */
+        private fun prepareScript(info: PlayerJs.Info): java.io.File? = runCatching {
+            val source = info.script.readText()
             val signature = info.signatureExpression.replace("INPUT", "sig")
             val nTransform = info.nExpression.replace("INPUT", "n")
 
+            val exports = "; window._sigFn = function(sig){ try { return $signature; } " +
+                "catch(e){ return null; } }; " +
+                "window._nFn = function(n){ try { return $nTransform; } catch(e){ return n; } }; "
+
+            val anchor = "})(_yt_player);"
+            val modified = if (source.contains(anchor)) {
+                Log.d(TAG, "exports injected into the player closure")
+                source.replace(anchor, "$exports$anchor")
+            } else {
+                Log.w(TAG, "closure anchor not found; appending exports at top level")
+                source + "\n" + exports
+            }
+
+            val out = java.io.File(info.script.parentFile, "player_prepared.js")
+            out.writeText(modified)
+            out
+        }.onFailure { Log.e(TAG, "prepareScript failed: ${it.message}", it) }.getOrNull()
+
+        private fun buildHtml(scriptName: String): String {
             return """<!DOCTYPE html>
 <html><head>
-<script src="${info.script.name}"></script>
+<script src="$scriptName"></script>
 <script>
-  window._sigFn = function (sig) { try { return $signature; } catch (e) { return null; } };
-  window._nFn  = function (n)   { try { return $nTransform; } catch (e) { return n; } };
-
   function decipherSig(requestId, value) {
     try {
+      if (typeof window._sigFn !== "function") { CipherBridge.onError(requestId, "no signature function"); return; }
       var out = window._sigFn(value);
       if (out === null || out === undefined) { CipherBridge.onError(requestId, "signature call returned null"); return; }
       CipherBridge.onResult(requestId, String(out));
@@ -145,11 +176,13 @@ class CipherWebView private constructor(private val webView: WebView) {
   }
 
   function transformN(requestId, value) {
-    try { CipherBridge.onResult(requestId, String(window._nFn(value))); }
-    catch (e) { CipherBridge.onError(requestId, String(e)); }
+    try {
+      if (typeof window._nFn !== "function") { CipherBridge.onError(requestId, "no n function"); return; }
+      CipherBridge.onResult(requestId, String(window._nFn(value)));
+    } catch (e) { CipherBridge.onError(requestId, String(e)); }
   }
 
-  // Prove both actually run before declaring the WebView usable.
+  // Prove both actually run, rather than merely exist.
   var sigOk = false, nOk = false;
   try { sigOk = typeof window._sigFn === "function" && window._sigFn("AAAAAAAAAA") !== null; } catch (e) {}
   try { var probe = window._nFn("AAAAAAAAAA"); nOk = typeof probe === "string" && probe !== "AAAAAAAAAA"; } catch (e) {}
