@@ -124,39 +124,37 @@ class CipherWebView private constructor(private val webView: WebView) {
             }
 
         private fun buildHtml(info: PlayerJs.Info): String {
-            val signatureExport = info.signature?.let { "window._sigFn = ${it.functionName};" } ?: ""
-            val signatureConstant = info.signature?.constantArg?.toString() ?: "null"
-            val nExport = info.nTransform?.let {
-                val base = it.functionName
-                if (it.index != null) "window._nFn = $base[${it.index}];" else "window._nFn = $base;"
-            } ?: ""
+            // The registry gives an expression with INPUT standing in for the argument; the
+            // implementation itself comes from the player script loaded above.
+            val signature = info.signatureExpression.replace("INPUT", "sig")
+            val nTransform = info.nExpression.replace("INPUT", "n")
 
             return """<!DOCTYPE html>
 <html><head>
 <script src="${info.script.name}"></script>
 <script>
-  window._sigConst = $signatureConstant;
-  try { $signatureExport } catch (e) { CipherBridge.log("sig export failed: " + e); }
-  try { $nExport } catch (e) { CipherBridge.log("n export failed: " + e); }
+  window._sigFn = function (sig) { try { return $signature; } catch (e) { return null; } };
+  window._nFn  = function (n)   { try { return $nTransform; } catch (e) { return n; } };
 
   function decipherSig(requestId, value) {
     try {
-      var fn = window._sigFn;
-      if (typeof fn !== "function") { CipherBridge.onError(requestId, "no signature function"); return; }
-      var out = (window._sigConst === null) ? fn(value) : fn(window._sigConst, value);
+      var out = window._sigFn(value);
+      if (out === null || out === undefined) { CipherBridge.onError(requestId, "signature call returned null"); return; }
       CipherBridge.onResult(requestId, String(out));
     } catch (e) { CipherBridge.onError(requestId, String(e)); }
   }
 
   function transformN(requestId, value) {
-    try {
-      var fn = window._nFn;
-      if (typeof fn !== "function") { CipherBridge.onError(requestId, "no n function"); return; }
-      CipherBridge.onResult(requestId, String(fn(value)));
-    } catch (e) { CipherBridge.onError(requestId, String(e)); }
+    try { CipherBridge.onResult(requestId, String(window._nFn(value))); }
+    catch (e) { CipherBridge.onError(requestId, String(e)); }
   }
 
-  CipherReady.onReady(typeof window._sigFn === "function", typeof window._nFn === "function");
+  // Prove both actually run before declaring the WebView usable.
+  var sigOk = false, nOk = false;
+  try { sigOk = typeof window._sigFn === "function" && window._sigFn("AAAAAAAAAA") !== null; } catch (e) {}
+  try { var probe = window._nFn("AAAAAAAAAA"); nOk = typeof probe === "string" && probe !== "AAAAAAAAAA"; } catch (e) {}
+  CipherBridge.log("self-test: signature=" + sigOk + " nTransform=" + nOk);
+  CipherReady.onReady(sigOk, nOk);
 </script>
 </head><body></body></html>"""
         }

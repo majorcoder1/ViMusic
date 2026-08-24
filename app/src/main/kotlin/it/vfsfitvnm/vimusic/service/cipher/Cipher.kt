@@ -3,7 +3,6 @@ package it.vfsfitvnm.vimusic.service.cipher
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import java.io.File
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -33,14 +32,8 @@ object Cipher {
             info = null
         }
 
-        val cacheDir = File(context.filesDir, "cipher")
-        val loaded = PlayerJs.load(cacheDir, forceRefresh) ?: return@withLock false
+        val loaded = PlayerJs.load(context, forceRefresh) ?: return@withLock false
         info = loaded
-
-        if (loaded.signature == null && loaded.nTransform == null) {
-            Log.e(TAG, "player script gave up neither transform")
-            return@withLock false
-        }
 
         webView = CipherWebView.create(context, loaded)
         webView != null

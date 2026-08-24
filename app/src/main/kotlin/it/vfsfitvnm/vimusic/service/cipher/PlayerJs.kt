@@ -1,5 +1,6 @@
 package it.vfsfitvnm.vimusic.service.cipher
 
+import android.content.Context
 import android.util.Log
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -8,15 +9,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * Locates YouTube's player script and picks out the three things playback needs from it.
+ * Downloads YouTube's player script and pairs it with the registry entry describing how to call it.
  *
- * The web clients hand back `signatureCipher` rather than a usable URL, and the `n` query
- * parameter has to be run through a transform before the CDN will serve more than a preview.
- * Both transforms live in this script, so it is downloaded and the relevant entry points are
- * identified here; executing them is [CipherWebView]'s job.
+ * Two details matter and both were previously wrong:
  *
- * The extraction patterns come from Metrolist (GPL-3.0), which tracks YouTube's obfuscation as it
- * changes; they are deliberately tried in order from most to least specific.
+ *  - The `player_ias` build from `www.youtube.com` is the one every working implementation uses.
+ *    `music.youtube.com` serves `player_es6`, a *different build under the same hash* whose
+ *    functions take different arguments — calling into it with the registry's arguments cannot work.
+ *  - Function names are not extracted from the script. They come from [PlayerConfig], because the
+ *    current obfuscation leaves nothing to anchor a regex to.
  */
 object PlayerJs {
     private const val TAG = "PlayerJs"
@@ -26,94 +27,82 @@ object PlayerJs {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
+    private const val REGISTRY_URL =
+        "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
+
+    private val hashPatterns = listOf(
+        Regex("""/s/player/([a-f0-9]{8})/"""),
+        Regex(""""jsUrl"\s*:\s*"[^"]*?/player/([a-f0-9]{8})/"""),
+        Regex("""player\\?/([a-f0-9]{8})\\?/""")
+    )
+
     data class Info(
+        val playerHash: String,
         val signatureTimestamp: Int,
-        val signature: Signature?,
-        val nTransform: NTransform?,
+        val signatureExpression: String,
+        val nExpression: String,
         val script: File
     )
 
-    /** Some builds pass a constant as the first argument, e.g. `hJ(6, decodeURIComponent(h.s))`. */
-    data class Signature(val functionName: String, val constantArg: Int?)
-
-    /** Some builds reach the transform through an array slot, e.g. `Xva[3](n)`. */
-    data class NTransform(val functionName: String, val index: Int?)
-
-    private val jsUrlPatterns = listOf(
-        Regex(""""jsUrl"\s*:\s*"([^"]+)""""),
-        Regex("""PLAYER_JS_URL"\s*:\s*"([^"]+)"""")
-    )
-
-    private val stsPatterns = listOf(
-        Regex("""signatureTimestamp['":\s]+(\d+)"""),
-        Regex("""sts['":\s]+(\d+)""")
-    )
-
-    private val signaturePatterns = listOf(
-        Regex("""&&\s*\(\s*[a-zA-Z0-9${'$'}]+\s*=\s*([a-zA-Z0-9${'$'}]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9${'$'}]+\s*\.\s*[a-z]\s*\)"""),
-        Regex("""&&\s*\(\s*[a-zA-Z0-9${'$'}]+\s*=\s*([a-zA-Z0-9${'$'}]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9${'$'}]+\s*\)"""),
-        Regex("""\b[cs]\s*&&\s*[adf]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9${'$'}]+)\("""),
-        Regex("""\b[a-zA-Z0-9]+\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9${'$'}]+)\("""),
-        Regex("""\bm=([a-zA-Z0-9${'$'}]{2,})\(decodeURIComponent\(h\.s\)\)""")
-    )
-
-    private val nPatterns = listOf(
-        Regex("""\.get\("n"\)\)&&\(b=([a-zA-Z0-9${'$'}]+)(?:\[(\d+)\])?\(([a-zA-Z0-9])\)"""),
-        Regex("""\.get\("n"\)\)\s*&&\s*\(([a-zA-Z0-9${'$'}]+)\s*=\s*([a-zA-Z0-9${'$'}]+)(?:\[(\d+)\])?\("""),
-        Regex("""\(\s*([a-zA-Z0-9${'$'}]+)\s*=\s*String\.fromCharCode\(110\)""")
-    )
-
-    suspend fun load(cacheDir: File, forceRefresh: Boolean = false): Info? = withContext(Dispatchers.IO) {
+    suspend fun load(context: Context, forceRefresh: Boolean = false): Info? = withContext(Dispatchers.IO) {
         runCatching {
-            val jsUrl = findPlayerJsUrl() ?: return@runCatching null
-            Log.d(TAG, "player js: $jsUrl")
+            PlayerConfig.load(context)
 
-            val script = File(cacheDir, "player.js")
-            val source = if (!forceRefresh && script.exists() && script.length() > 100_000) {
-                script.readText()
-            } else {
-                download(jsUrl)?.also {
-                    cacheDir.mkdirs()
-                    script.writeText(it)
-                } ?: return@runCatching null
-            }
-
-            val sts = stsPatterns.firstNotNullOfOrNull { it.find(source)?.groupValues?.get(1)?.toIntOrNull() }
-            if (sts == null) {
-                Log.e(TAG, "no signatureTimestamp in player js")
+            val hash = findPlayerHash() ?: run {
+                Log.e(TAG, "could not determine the current player hash")
                 return@runCatching null
             }
 
-            val signature = signaturePatterns.firstNotNullOfOrNull { pattern ->
-                pattern.find(source)?.let { match ->
-                    val name = match.groupValues[1]
-                    val constant = match.groupValues.getOrNull(2)?.toIntOrNull()
-                    Signature(name, constant)
-                }
+            var entry = PlayerConfig[hash]
+            if (entry == null) {
+                // An unrecognised player means the bundled registry has aged out; the upstream copy
+                // is usually updated within hours of a rotation.
+                Log.d(TAG, "player $hash not in bundled registry, refreshing from upstream")
+                get(REGISTRY_URL)?.let(PlayerConfig::merge)
+                entry = PlayerConfig[hash]
+            }
+            if (entry == null) {
+                Log.e(TAG, "no registry entry for player $hash")
+                return@runCatching null
             }
 
-            val nTransform = nPatterns.firstNotNullOfOrNull { pattern ->
-                pattern.find(source)?.let { match ->
-                    val groups = match.groupValues.drop(1).filter { it.isNotEmpty() }
-                    val name = groups.firstOrNull { !it.all(Char::isDigit) } ?: return@let null
-                    val index = groups.firstOrNull { it.all(Char::isDigit) }?.toIntOrNull()
-                    NTransform(name, index)
+            val cacheDir = File(context.filesDir, "cipher")
+            val script = File(cacheDir, "player_$hash.js")
+            if (forceRefresh || !script.exists() || script.length() < 100_000) {
+                val url = "https://www.youtube.com/s/player/$hash/player_ias.vflset/en_GB/base.js"
+                val source = get(url) ?: run {
+                    Log.e(TAG, "could not download $url")
+                    return@runCatching null
                 }
+                cacheDir.mkdirs()
+                cacheDir.listFiles()?.forEach { if (it.name.startsWith("player_") && it != script) it.delete() }
+                script.writeText(source)
+                Log.d(TAG, "downloaded player_ias $hash (${source.length} chars)")
             }
 
-            Log.d(TAG, "sts=$sts signature=$signature nTransform=$nTransform")
-            Info(sts, signature, nTransform, script)
+            Log.d(
+                TAG,
+                "player=$hash sts=${entry.signatureTimestamp} sig=${entry.signatureExpression}"
+            )
+            Info(
+                playerHash = hash,
+                signatureTimestamp = entry.signatureTimestamp,
+                signatureExpression = entry.signatureExpression,
+                nExpression = entry.nExpression,
+                script = script
+            )
         }.onFailure { Log.e(TAG, "player js load failed: ${it.message}", it) }.getOrNull()
     }
 
-    private fun findPlayerJsUrl(): String? {
-        val html = get("https://music.youtube.com/") ?: return null
-        val raw = jsUrlPatterns.firstNotNullOfOrNull { it.find(html)?.groupValues?.get(1) } ?: return null
-        val cleaned = raw.replace("\\/", "/")
-        return if (cleaned.startsWith("http")) cleaned else "https://music.youtube.com$cleaned"
+    /** The hash identifies the player build; both YouTube front-ends report the same one. */
+    private fun findPlayerHash(): String? {
+        for (page in listOf("https://www.youtube.com/iframe_api", "https://music.youtube.com/")) {
+            val body = get(page) ?: continue
+            hashPatterns.firstNotNullOfOrNull { it.find(body)?.groupValues?.get(1) }
+                ?.let { return it }
+        }
+        return null
     }
-
-    private fun download(url: String) = get(url)
 
     private fun get(url: String): String? = runCatching {
         http.newCall(
