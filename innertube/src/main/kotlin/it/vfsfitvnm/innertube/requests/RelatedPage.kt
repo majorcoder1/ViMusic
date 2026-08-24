@@ -9,10 +9,12 @@ import it.vfsfitvnm.innertube.models.MusicCarouselShelfRenderer
 import it.vfsfitvnm.innertube.models.NextResponse
 import it.vfsfitvnm.innertube.models.bodies.BrowseBody
 import it.vfsfitvnm.innertube.models.bodies.NextBody
+import it.vfsfitvnm.innertube.utils.RelatedBrowseIdPrefix
 import it.vfsfitvnm.innertube.utils.findSectionByStrapline
 import it.vfsfitvnm.innertube.utils.findSectionByTitle
 import it.vfsfitvnm.innertube.utils.from
 import it.vfsfitvnm.innertube.utils.runCatchingNonCancellable
+import it.vfsfitvnm.innertube.utils.watchNextTabBrowseId
 
 suspend fun Innertube.relatedPage(body: NextBody) = runCatchingNonCancellable {
     val nextResponse = client.post(next) {
@@ -20,17 +22,7 @@ suspend fun Innertube.relatedPage(body: NextBody) = runCatchingNonCancellable {
         mask("contents.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer.tabs.tabRenderer(endpoint,title)")
     }.body<NextResponse>()
 
-    val browseId = nextResponse
-        .contents
-        ?.singleColumnMusicWatchNextResultsRenderer
-        ?.tabbedRenderer
-        ?.watchNextTabbedResultsRenderer
-        ?.tabs
-        ?.getOrNull(2)
-        ?.tabRenderer
-        ?.endpoint
-        ?.browseEndpoint
-        ?.browseId
+    val browseId = nextResponse.watchNextTabBrowseId(RelatedBrowseIdPrefix)
         ?: return@runCatchingNonCancellable null
 
     val response = client.post(browse) {

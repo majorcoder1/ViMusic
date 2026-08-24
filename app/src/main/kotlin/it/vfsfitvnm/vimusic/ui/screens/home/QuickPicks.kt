@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,6 @@ import it.vfsfitvnm.vimusic.ui.items.SongItemPlaceholder
 import it.vfsfitvnm.vimusic.ui.styling.Dimensions
 import it.vfsfitvnm.vimusic.ui.styling.LocalAppearance
 import it.vfsfitvnm.vimusic.ui.styling.px
-import it.vfsfitvnm.vimusic.utils.SnapLayoutInfoProvider
 import it.vfsfitvnm.vimusic.utils.asMediaItem
 import it.vfsfitvnm.vimusic.utils.center
 import it.vfsfitvnm.vimusic.utils.forcePlay
@@ -129,15 +129,6 @@ fun QuickPicks(
             0.9f
         }
 
-        val snapLayoutInfoProvider = remember(quickPicksLazyGridState) {
-            SnapLayoutInfoProvider(
-                lazyGridState = quickPicksLazyGridState,
-                positionInLayout = { layoutSize, itemSize ->
-                    (layoutSize * quickPicksLazyGridItemWidthFactor / 2f - itemSize / 2f)
-                }
-            )
-        }
-
         val itemInHorizontalGridWidth = maxWidth * quickPicksLazyGridItemWidthFactor
 
         Column(
@@ -161,7 +152,7 @@ fun QuickPicks(
                 LazyHorizontalGrid(
                     state = quickPicksLazyGridState,
                     rows = GridCells.Fixed(4),
-                    flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
+                    flingBehavior = rememberSnapFlingBehavior(quickPicksLazyGridState, SnapPosition.Center),
                     contentPadding = endPaddingValues,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -206,7 +197,7 @@ fun QuickPicks(
                                             )
                                         }
                                     )
-                                    .animateItemPlacement()
+                                    .animateItem()
                                     .width(itemInHorizontalGridWidth)
                             )
                         }
@@ -240,7 +231,7 @@ fun QuickPicks(
                                         )
                                     }
                                 )
-                                .animateItemPlacement()
+                                .animateItem()
                                 .width(itemInHorizontalGridWidth)
                         )
                     }

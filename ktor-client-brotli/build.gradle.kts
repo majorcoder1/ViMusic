@@ -1,5 +1,16 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 sourceSets.all {
@@ -7,6 +18,6 @@ sourceSets.all {
 }
 
 dependencies {
-    implementation(libs.ktor.client.encoding)
+    api(libs.ktor.client.encoding)
     implementation(libs.brotli)
 }

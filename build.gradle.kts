@@ -1,30 +1,25 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-
-    dependencies {
-        classpath("com.android.tools.build", "gradle", "7.3.0")
-        classpath(kotlin("gradle-plugin", libs.versions.kotlin.get()))
-    }
-}
-
-tasks.register("clean", Delete::class) {
-    delete(rootProject.buildDir)
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.ksp) apply false
 }
 
 subprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        kotlinOptions {
-            if (project.findProperty("enableComposeCompilerReports") == "true") {
-                arrayOf("reports", "metrics").forEach {
-                    freeCompilerArgs = freeCompilerArgs + listOf(
-                        "-P", "plugin:androidx.compose.compiler.plugins.kotlin:${it}Destination=${project.buildDir.absolutePath}/compose_metrics"
+        if (project.findProperty("enableComposeCompilerReports") == "true") {
+            compilerOptions.freeCompilerArgs.addAll(
+                listOf("reports", "metrics").flatMap {
+                    listOf(
+                        "-P",
+                        "plugin:androidx.compose.compiler.plugins.kotlin:${it}Destination=" +
+                            "${layout.buildDirectory.get().asFile.absolutePath}/compose_metrics"
                     )
                 }
-            }
+            )
         }
     }
 }

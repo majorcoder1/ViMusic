@@ -1,33 +1,27 @@
 plugins {
-    id("com.android.application")
-    kotlin("android")
-    kotlin("kapt")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
-    compileSdk = 33
+    namespace = "it.vfsfitvnm.vimusic"
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "it.vfsfitvnm.vimusic"
-        minSdk = 21
-        targetSdk = 33
-        versionCode = 20
-        versionName = "0.5.4"
+        minSdk = 23
+        targetSdk = 36
+        versionCode = 21
+        versionName = "0.6.0"
     }
-
-    splits {
-        abi {
-            reset()
-            isUniversalApk = true
-        }
-    }
-
-    namespace = "it.vfsfitvnm.vimusic"
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            manifestPlaceholders["appName"] = "Debug"
+            manifestPlaceholders["appName"] = "ViMusic Debug"
         }
 
         release {
@@ -45,52 +39,73 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
-
-    kotlinOptions {
-        freeCompilerArgs += "-Xcontext-receivers"
-        jvmTarget = "1.8"
+    packaging {
+        resources.excludes += setOf(
+            "META-INF/{AL2.0,LGPL2.1}",
+            "META-INF/*.version",
+            "kotlin/**",
+            "DebugProbesKt.bin"
+        )
     }
 }
 
-kapt {
-    arguments {
-        arg("room.schemaLocation", "$projectDir/schemas")
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        // Route0/1/2.invoke take the RouteHandlerScope as a context parameter, the
+        // replacement for the context receivers this project was written against.
+        freeCompilerArgs.add("-Xcontext-parameters")
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.generateKotlin", "true")
 }
 
 dependencies {
-    implementation(projects.composePersist)
-    implementation(projects.composeRouting)
-    implementation(projects.composeReordering)
+    implementation(project(":compose-persist"))
+    implementation(project(":compose-routing"))
+    implementation(project(":compose-reordering"))
+    implementation(project(":innertube"))
+    implementation(project(":kugou"))
 
-    implementation(libs.compose.activity)
+    implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
     implementation(libs.compose.ripple)
-    implementation(libs.compose.shimmer)
+    implementation(libs.compose.activity)
     implementation(libs.compose.coil)
+    implementation(libs.compose.shimmer)
 
+    // Proof-of-origin token generation runs BotGuard in a WebView and talks to YouTube's
+    // attestation endpoints directly; see service/potoken.
+    implementation(libs.okhttp)
+    implementation(libs.serialization.json)
+
+    implementation(libs.core.ktx)
+    implementation(libs.lifecycle.runtime)
+    implementation(libs.annotation)
     implementation(libs.palette)
 
-    implementation(libs.exoplayer)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.datasource)
+    implementation(libs.media3.common)
 
     implementation(libs.room)
-    kapt(libs.room.compiler)
-
-    implementation(projects.innertube)
-    implementation(projects.kugou)
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
 
     coreLibraryDesugaring(libs.desugaring)
 }

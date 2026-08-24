@@ -1,0 +1,78 @@
+[versions]
+agp = "8.13.2"
+kotlin = "2.3.21"
+ksp = "2.3.11"
+
+compose-bom = "2026.06.01"   # 2026.08 (Compose 1.12) needs compileSdk 37, which has no SDK platform yet
+activity = "1.12.4"
+core-ktx = "1.18.0"
+lifecycle = "2.10.0"
+annotation = "1.10.0"
+palette = "1.0.0"
+
+media3 = "1.11.0"
+room = "2.8.4"
+
+ktor = "3.5.2"
+serialization = "1.11.0"
+coroutines = "1.11.0"
+
+coil = "2.7.0"
+shimmer = "1.5.0"
+brotli = "0.1.2"
+desugaring = "2.1.5"
+junit = "4.13.2"
+okhttp = "4.12.0"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+[libraries]
+# Compose (versions come from the BOM)
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-util = { group = "androidx.compose.ui", name = "ui-util" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-ripple = { group = "androidx.compose.material", name = "material-ripple" }
+
+# AndroidX
+compose-activity = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
+palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
+
+# Media
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-datasource = { group = "androidx.media3", name = "media3-datasource", version.ref = "media3" }
+media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
+
+# Persistence
+room = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+# Networking
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-client-encoding = { group = "io.ktor", name = "ktor-client-encoding", version.ref = "ktor" }
+ktor-serialization-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# Misc
+compose-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+compose-shimmer = { group = "com.valentinilk.shimmer", name = "compose-shimmer", version.ref = "shimmer" }
+brotli = { group = "org.brotli", name = "dec", version.ref = "brotli" }
+desugaring = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugaring" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

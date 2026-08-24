@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.core.content.getSystemService
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.text.isDigitsOnly
 import androidx.media3.common.AudioAttributes
@@ -60,7 +61,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink.DefaultAudioProcessorChain
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
-import androidx.media3.exoplayer.audio.SonicAudioProcessor
+import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -69,6 +70,10 @@ import androidx.media3.extractor.mkv.MatroskaExtractor
 import androidx.media3.extractor.mp4.FragmentedMp4Extractor
 import it.vfsfitvnm.innertube.Innertube
 import it.vfsfitvnm.innertube.models.NavigationEndpoint
+import it.vfsfitvnm.innertube.VisitorData
+import it.vfsfitvnm.vimusic.service.cipher.Cipher
+import it.vfsfitvnm.vimusic.service.potoken.PoTokenGenerator
+import it.vfsfitvnm.innertube.models.Context as InnertubeContext
 import it.vfsfitvnm.innertube.models.bodies.PlayerBody
 import it.vfsfitvnm.innertube.requests.player
 import it.vfsfitvnm.vimusic.Database
@@ -147,6 +152,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private var radio: YouTubeRadio? = null
 
     private lateinit var bitmapProvider: BitmapProvider
+    private val poTokenGenerator by lazy { PoTokenGenerator(this) }
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO) + Job()
 
@@ -179,6 +185,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         super.onCreate()
 
         bitmapProvider = BitmapProvider(
+            context = this,
             bitmapSize = (256 * resources.displayMetrics.density).roundToInt(),
             colorProvider = { isSystemInDarkMode ->
                 if (isSystemInDarkMode) Color.BLACK else Color.WHITE
@@ -259,7 +266,14 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             addAction(Action.previous.value)
         }
 
-        registerReceiver(notificationActionReceiver, filter)
+        // From Android 13 the export flag is mandatory. These are the app's own playback
+        // actions, so the receiver must not be reachable by other apps.
+        ContextCompat.registerReceiver(
+            this,
+            notificationActionReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         maybeResumePlaybackWhenDeviceConnected()
     }
@@ -619,7 +633,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String) {
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
         when (key) {
             persistentQueueKey -> isPersistentQueueEnabled =
                 sharedPreferences.getBoolean(key, isPersistentQueueEnabled)
@@ -650,10 +664,10 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun notification(): Notification? {
         if (player.currentMediaItem == null) return null
 
-        val playIntent = Action.play.pendingIntent
-        val pauseIntent = Action.pause.pendingIntent
-        val nextIntent = Action.next.pendingIntent
-        val prevIntent = Action.previous.pendingIntent
+        val playIntent = Action.play.pendingIntent(this)
+        val pauseIntent = Action.pause.pendingIntent(this)
+        val nextIntent = Action.next.pendingIntent(this)
+        val prevIntent = Action.previous.pendingIntent(this)
 
         val mediaMetadata = player.mediaMetadata
 
@@ -762,8 +776,47 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     ringBuffer.getOrNull(0)?.first -> dataSpec.withUri(ringBuffer.getOrNull(0)!!.second)
                     ringBuffer.getOrNull(1)?.first -> dataSpec.withUri(ringBuffer.getOrNull(1)!!.second)
                     else -> {
+                        // A proof-of-origin token is what lifts YouTube's ~1 MB cap. One is
+                        // bound to the session and travels with the /player request; the other is
+                        // bound to the video and is appended to the stream URL further down.
+                        // Full-length playback needs three things together: the web client, a
+                        // proof-of-origin token bound to the session, and the signature timestamp
+                        // taken from YouTube's player script. Any one missing and the response is
+                        // either UNPLAYABLE or capped at roughly a megabyte.
+                        val session = runBlocking(Dispatchers.IO) { VisitorData.get() }
+                        val cipherReady = runBlocking(Dispatchers.IO) {
+                            Cipher.ensureReady(this@PlayerService)
+                        }
+                        val poToken = session?.let { poTokenGenerator.getWebClientPoToken(videoId, it) }
+
+                        val useWebClient = cipherReady && poToken != null && session != null
+                        android.util.Log.d(
+                            "VMPot",
+                            "useWebClient=$useWebClient cipherReady=$cipherReady sts=${Cipher.signatureTimestamp} " +
+                                "pot=${poToken != null}"
+                        )
+
+                        val playerContext =
+                            if (useWebClient) InnertubeContext.DefaultWeb.withVisitorData(session)
+                            else InnertubeContext.DefaultAndroidVr
+
                         val urlResult = runBlocking(Dispatchers.IO) {
-                            Innertube.player(PlayerBody(videoId = videoId))
+                            Innertube.player(
+                                PlayerBody(
+                                    videoId = videoId,
+                                    context = playerContext,
+                                    serviceIntegrityDimensions = poToken?.playerRequestPoToken
+                                        ?.takeIf { useWebClient }
+                                        ?.let { PlayerBody.ServiceIntegrityDimensions(it) },
+                                    playbackContext = Cipher.signatureTimestamp
+                                        ?.takeIf { useWebClient }
+                                        ?.let {
+                                            PlayerBody.PlaybackContext(
+                                                PlayerBody.PlaybackContext.ContentPlaybackContext(it)
+                                            )
+                                        }
+                                )
+                            )
                         }?.mapCatching { body ->
                             if (body.videoDetails?.videoId != videoId) {
                                 throw VideoIdMismatchException()
@@ -803,7 +856,20 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                                         )
                                     }
 
-                                    format.url
+                                    // Decipher the signature and de-throttle `n`, then append the
+                                    // video-bound token; the stream stays capped without it.
+                                    val resolved = runBlocking(Dispatchers.IO) {
+                                        Cipher.resolve(format.url, format.signatureCipher)
+                                    } ?: format.url
+
+                                    resolved?.let { plain ->
+                                        poToken?.streamingDataPoToken
+                                            ?.takeIf { useWebClient }
+                                            ?.let { pot ->
+                                                plain + (if ('?' in plain) "&" else "?") +
+                                                    "pot=" + Uri.encode(pot)
+                                            } ?: plain
+                                    }
                                 } ?: throw PlayableFormatNotFoundException()
 
                                 "UNPLAYABLE" -> throw UnplayableException()
@@ -842,10 +908,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     private fun createRendersFactory(): RenderersFactory {
-        val audioSink = DefaultAudioSink.Builder()
+        val audioSink = DefaultAudioSink.Builder(applicationContext)
             .setEnableFloatOutput(false)
             .setEnableAudioTrackPlaybackParams(false)
-            .setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
             .setAudioProcessorChain(
                 DefaultAudioProcessorChain(
                     emptyArray(),
@@ -981,12 +1046,11 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     @JvmInline
     private value class Action(val value: String) {
-        context(Context)
-        val pendingIntent: PendingIntent
-            get() = PendingIntent.getBroadcast(
-                this@Context,
+        fun pendingIntent(context: Context): PendingIntent =
+            PendingIntent.getBroadcast(
+                context,
                 100,
-                Intent(value).setPackage(packageName),
+                Intent(value).setPackage(context.packageName),
                 PendingIntent.FLAG_UPDATE_CURRENT.or(if (isAtLeastAndroid6) PendingIntent.FLAG_IMMUTABLE else 0)
             )
 

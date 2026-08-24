@@ -14,8 +14,11 @@ data class SectionListRenderer(
     data class Content(
         @JsonNames("musicImmersiveCarouselShelfRenderer")
         val musicCarouselShelfRenderer: MusicCarouselShelfRenderer?,
+        // Albums answer with `musicShelfRenderer`, playlists with `musicPlaylistShelfRenderer`;
+        // the alias means one field covers both.
         @JsonNames("musicPlaylistShelfRenderer")
         val musicShelfRenderer: MusicShelfRenderer?,
+        val musicResponsiveHeaderRenderer: MusicResponsiveHeaderRenderer?,
         val gridRenderer: GridRenderer?,
         val musicDescriptionShelfRenderer: MusicDescriptionShelfRenderer?,
     ) {

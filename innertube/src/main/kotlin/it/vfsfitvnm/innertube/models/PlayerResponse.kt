@@ -20,11 +20,19 @@ data class PlayerResponse(
     ) {
         @Serializable
         data class AudioConfig(
-            private val loudnessDb: Double?
+            private val loudnessDb: Double?,
+            private val perceptualLoudnessDb: Double? = null
         ) {
-            // For music clients only
+            /**
+             * How much louder than YouTube's reference level this track is, in dB. Playback should
+             * apply the negation of this as gain.
+             *
+             * The old `+7` correction here existed only to rebase `ANDROID_MUSIC`'s reference level.
+             * The playback clients used now report against the standard reference, so the value is
+             * already normalized and shifting it would over-boost every track by 7 dB.
+             */
             val normalizedLoudnessDb: Float?
-                get() = loudnessDb?.plus(7)?.toFloat()
+                get() = loudnessDb?.toFloat()
         }
     }
 
@@ -33,7 +41,9 @@ data class PlayerResponse(
         val adaptiveFormats: List<AdaptiveFormat>?
     ) {
         val highestQualityFormat: AdaptiveFormat?
-            get() = adaptiveFormats?.findLast { it.itag == 251 || it.itag == 140 }
+            get() = adaptiveFormats
+                ?.filter { it.url != null || it.signatureCipher != null }
+                ?.findLast { it.itag == 251 || it.itag == 140 }
 
         @Serializable
         data class AdaptiveFormat(
@@ -48,6 +58,8 @@ data class PlayerResponse(
             val loudnessDb: Double?,
             val audioSampleRate: Int?,
             val url: String?,
+            /** Web clients return this in place of [url]; it has to be deciphered first. */
+            val signatureCipher: String? = null,
         )
     }
 

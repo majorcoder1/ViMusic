@@ -129,7 +129,7 @@ fun HomeAlbums(
                     thumbnailSizeDp = thumbnailSizeDp,
                     modifier = Modifier
                         .clickable(onClick = { onAlbumClick(album) })
-                        .animateItemPlacement()
+                        .animateItem()
                 )
             }
         }

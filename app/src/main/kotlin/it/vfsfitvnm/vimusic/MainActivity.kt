@@ -27,10 +27,6 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material.ripple.LocalRippleTheme
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material.ripple.RippleTheme
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -77,6 +73,7 @@ import it.vfsfitvnm.vimusic.ui.screens.home.HomeScreen
 import it.vfsfitvnm.vimusic.ui.screens.player.Player
 import it.vfsfitvnm.vimusic.ui.screens.playlistRoute
 import it.vfsfitvnm.vimusic.ui.styling.Appearance
+import it.vfsfitvnm.vimusic.ui.styling.ripple
 import it.vfsfitvnm.vimusic.ui.styling.Dimensions
 import it.vfsfitvnm.vimusic.ui.styling.LocalAppearance
 import it.vfsfitvnm.vimusic.ui.styling.colorPaletteOf
@@ -279,21 +276,13 @@ class MainActivity : ComponentActivity(), PersistMapOwner {
                 }
             }
 
-            val rippleTheme =
+            val rippleIndication =
                 remember(appearance.colorPalette.text, appearance.colorPalette.isDark) {
-                    object : RippleTheme {
-                        @Composable
-                        override fun defaultColor(): Color = RippleTheme.defaultRippleColor(
-                            contentColor = appearance.colorPalette.text,
-                            lightTheme = !appearance.colorPalette.isDark
-                        )
-
-                        @Composable
-                        override fun rippleAlpha(): RippleAlpha = RippleTheme.defaultRippleAlpha(
-                            contentColor = appearance.colorPalette.text,
-                            lightTheme = !appearance.colorPalette.isDark
-                        )
-                    }
+                    ripple(
+                        color = appearance.colorPalette.text,
+                        isDark = appearance.colorPalette.isDark,
+                        bounded = true
+                    )
                 }
 
             val shimmerTheme = remember {
@@ -341,8 +330,7 @@ class MainActivity : ComponentActivity(), PersistMapOwner {
 
                 CompositionLocalProvider(
                     LocalAppearance provides appearance,
-                    LocalIndication provides rememberRipple(bounded = true),
-                    LocalRippleTheme provides rippleTheme,
+                    LocalIndication provides rippleIndication,
                     LocalShimmerTheme provides shimmerTheme,
                     LocalPlayerServiceBinder provides binder,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
@@ -407,10 +395,10 @@ class MainActivity : ComponentActivity(), PersistMapOwner {
         onNewIntent(intent)
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        val uri = intent?.data ?: return
+        val uri = intent.data ?: return
 
         intent.data = null
         this.intent = null

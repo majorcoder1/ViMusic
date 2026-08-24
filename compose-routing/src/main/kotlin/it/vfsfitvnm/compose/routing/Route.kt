@@ -30,10 +30,10 @@ open class Route internal constructor(val tag: String) {
 
 @Immutable
 class Route0(tag: String) : Route(tag) {
-    context(RouteHandlerScope)
+    context(scope: RouteHandlerScope)
     @Composable
     operator fun invoke(content: @Composable () -> Unit) {
-        if (this == route) {
+        if (this == scope.route) {
             content()
         }
     }
@@ -45,11 +45,11 @@ class Route0(tag: String) : Route(tag) {
 
 @Immutable
 class Route1<P0>(tag: String) : Route(tag) {
-    context(RouteHandlerScope)
+    context(scope: RouteHandlerScope)
     @Composable
     operator fun invoke(content: @Composable (P0) -> Unit) {
-        if (this == route) {
-            content(parameters[0] as P0)
+        if (this == scope.route) {
+            content(scope.parameters[0] as P0)
         }
     }
 
@@ -65,11 +65,11 @@ class Route1<P0>(tag: String) : Route(tag) {
 
 @Immutable
 class Route2<P0, P1>(tag: String) : Route(tag) {
-    context(RouteHandlerScope)
+    context(scope: RouteHandlerScope)
     @Composable
     operator fun invoke(content: @Composable (P0, P1) -> Unit) {
-        if (this == route) {
-            content(parameters[0] as P0, parameters[1] as P1)
+        if (this == scope.route) {
+            content(scope.parameters[0] as P0, scope.parameters[1] as P1)
         }
     }
 

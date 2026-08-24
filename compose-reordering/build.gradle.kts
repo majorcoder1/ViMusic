@@ -1,22 +1,15 @@
 plugins {
-    id("com.android.library")
-    kotlin("android")
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "it.vfsfitvnm.compose.reordering"
-    compileSdk = 33
+    compileSdk = 36
 
     defaultConfig {
-        minSdk = 21
-        targetSdk = 33
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-        }
+        minSdk = 23
     }
 
     sourceSets.all {
@@ -28,20 +21,19 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+}
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
-
-    kotlinOptions {
-        freeCompilerArgs += "-Xcontext-receivers"
-        jvmTarget = "1.8"
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
 dependencies {
+    implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)
+
 }

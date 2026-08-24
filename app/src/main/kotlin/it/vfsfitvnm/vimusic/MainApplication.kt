@@ -12,7 +12,7 @@ import it.vfsfitvnm.vimusic.utils.preferences
 class MainApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
-        DatabaseInitializer()
+        DatabaseInitializer(this)
     }
 
     override fun newImageLoader(): ImageLoader {

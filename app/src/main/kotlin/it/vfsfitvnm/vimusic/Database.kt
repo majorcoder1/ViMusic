@@ -480,11 +480,10 @@ abstract class DatabaseInitializer protected constructor() : RoomDatabase() {
     companion object {
         lateinit var Instance: DatabaseInitializer
 
-        context(Context)
-        operator fun invoke() {
+        operator fun invoke(context: Context) {
             if (!::Instance.isInitialized) {
                 Instance = Room
-                    .databaseBuilder(this@Context, DatabaseInitializer::class.java, "data.db")
+                    .databaseBuilder(context, DatabaseInitializer::class.java, "data.db")
                     .addMigrations(
                         From8To9Migration(),
                         From10To11Migration(),
@@ -651,7 +650,7 @@ object Converters {
                 val bundle = parcel.readBundle(MediaItem::class.java.classLoader)
                 parcel.recycle()
 
-                bundle?.let(MediaItem.CREATOR::fromBundle)
+                bundle?.let(MediaItem::fromBundle)
             }.getOrNull()
         }
     }

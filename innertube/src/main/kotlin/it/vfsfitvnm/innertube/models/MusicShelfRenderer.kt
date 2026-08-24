@@ -23,7 +23,10 @@ data class MusicShelfRenderer(
                 ?: emptyList()) to
                     (musicResponsiveListItemRenderer
                         ?.flexColumns
-                        ?.lastOrNull()
+                        // Column 1 holds the artists. This used to be the last column, but a third
+                        // ("1.8B plays") was added, so `lastOrNull` returned the play count instead
+                        // and search results lost their artist names.
+                        ?.getOrNull(1)
                         ?.musicResponsiveListItemFlexColumnRenderer
                         ?.text
                         ?.splitBySeparator()
