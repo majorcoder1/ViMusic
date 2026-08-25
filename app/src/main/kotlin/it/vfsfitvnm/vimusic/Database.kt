@@ -130,6 +130,24 @@ interface Database {
     @Query("SELECT * FROM Song WHERE id = :id")
     fun song(id: String): Flow<Song?>
 
+    @Query("SELECT COUNT(*) FROM Song WHERE totalPlayTimeMs > 0")
+    fun songsPlayedCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM Song WHERE likedAt IS NOT NULL")
+    fun likedSongsCount(): Flow<Int>
+
+    @Query("SELECT COALESCE(SUM(totalPlayTimeMs), 0) FROM Song")
+    fun totalPlayTimeMs(): Flow<Long>
+
+    @Query("SELECT COUNT(*) FROM Artist WHERE bookmarkedAt IS NOT NULL")
+    fun bookmarkedArtistsCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM Album WHERE bookmarkedAt IS NOT NULL")
+    fun bookmarkedAlbumsCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM Playlist")
+    fun playlistsCount(): Flow<Int>
+
     @Query("SELECT likedAt FROM Song WHERE id = :songId")
     fun likedAt(songId: String): Flow<Long?>
 

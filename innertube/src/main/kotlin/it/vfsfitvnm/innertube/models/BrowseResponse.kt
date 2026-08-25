@@ -38,8 +38,20 @@ data class BrowseResponse(
             val startRadioButton: StartRadioButton?,
             val thumbnail: ThumbnailRenderer?,
             val foregroundThumbnail: ThumbnailRenderer?,
-            val title: Runs?
+            val title: Runs?,
+            val subscriptionButton: SubscriptionButton?
         ) {
+            @Serializable
+            data class SubscriptionButton(
+                val subscribeButtonRenderer: SubscribeButtonRenderer?
+            ) {
+                @Serializable
+                data class SubscribeButtonRenderer(
+                    val subscriberCountText: Runs?,
+                    val subscribed: Boolean? = null
+                )
+            }
+
             @Serializable
             data class PlayButton(
                 val buttonRenderer: ButtonRenderer?

@@ -96,11 +96,15 @@ fun ArtistOverview(
                             .asPaddingValues()
                     )
             ) {
-                Box(
-                    modifier = Modifier
-                        .padding(endPaddingValues)
+                // The artwork-led header replaces the old title-and-circle pairing; the shuffle
+                // and radio actions ride underneath it rather than beside the title.
+                ArtistHeader(
+                    artistPage = youtubeArtistPage,
+                    thumbnailUrl = youtubeArtistPage?.thumbnail?.url,
+                    name = youtubeArtistPage?.name,
+                    modifier = Modifier.padding(endPaddingValues)
                 ) {
-                    headerContent {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         youtubeArtistPage?.shuffleEndpoint?.let { endpoint ->
                             SecondaryTextButton(
                                 text = "Shuffle",
@@ -110,10 +114,19 @@ fun ArtistOverview(
                                 }
                             )
                         }
+
+                        youtubeArtistPage?.radioEndpoint?.let { endpoint ->
+                            SecondaryTextButton(
+                                text = "Radio",
+                                onClick = {
+                                    binder?.stopRadio()
+                                    binder?.playRadio(endpoint)
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                     }
                 }
-
-                thumbnailContent()
 
                 if (youtubeArtistPage != null) {
                     youtubeArtistPage.songs?.let { songs ->

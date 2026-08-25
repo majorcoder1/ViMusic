@@ -179,6 +179,8 @@ object Innertube {
     data class ArtistPage(
         val name: String?,
         val description: String?,
+        /** Already formatted by YouTube, e.g. "1.04K" or "8.93M". */
+        val subscriberCountText: String? = null,
         val thumbnail: Thumbnail?,
         val shuffleEndpoint: NavigationEndpoint.Endpoint.Watch?,
         val radioEndpoint: NavigationEndpoint.Endpoint.Watch?,
