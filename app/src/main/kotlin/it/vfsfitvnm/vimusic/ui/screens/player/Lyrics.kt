@@ -72,6 +72,7 @@ import it.vfsfitvnm.vimusic.utils.center
 import it.vfsfitvnm.vimusic.utils.color
 import it.vfsfitvnm.vimusic.utils.isShowingSynchronizedLyricsKey
 import it.vfsfitvnm.vimusic.utils.medium
+import it.vfsfitvnm.vimusic.utils.semiBold
 import it.vfsfitvnm.vimusic.utils.rememberPreference
 import it.vfsfitvnm.vimusic.utils.toast
 import it.vfsfitvnm.vimusic.utils.verticalFadingEdge
@@ -101,7 +102,9 @@ fun Lyrics(
         val menuState = LocalMenuState.current
         val currentView = LocalView.current
 
-        var isShowingSynchronizedLyrics by rememberPreference(isShowingSynchronizedLyricsKey, false)
+        // Synced lyrics are the point of the feature, so they are the default; the toggle in the
+        // menu still switches back to the plain text version.
+        var isShowingSynchronizedLyrics by rememberPreference(isShowingSynchronizedLyricsKey, true)
 
         var isEditing by remember(mediaId, isShowingSynchronizedLyrics) {
             mutableStateOf(false)
@@ -276,25 +279,33 @@ fun Lyrics(
 
                     LazyColumn(
                         state = lazyListState,
-                        userScrollEnabled = false,
+                        // Scrolling stays available so the words can be read ahead or back; the
+                        // follow-along scroll resumes on the next line either way.
+                        userScrollEnabled = true,
                         contentPadding = PaddingValues(vertical = size / 2),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .verticalFadingEdge()
                     ) {
                         itemsIndexed(items = synchronizedLyrics.sentences) { index, sentence ->
+                            val isCurrent = index == synchronizedLyrics.index
                             BasicText(
                                 text = sentence.second,
-                                style = typography.xs.center.medium.color(if (index == synchronizedLyrics.index) PureBlackColorPalette.text else PureBlackColorPalette.textDisabled),
+                                style = (if (isCurrent) typography.l.semiBold else typography.m.medium)
+                                    .center
+                                    .color(
+                                        if (isCurrent) PureBlackColorPalette.text
+                                        else PureBlackColorPalette.textDisabled
+                                    ),
                                 modifier = Modifier
-                                    .padding(vertical = 4.dp, horizontal = 32.dp)
+                                    .padding(vertical = 8.dp, horizontal = 24.dp)
                             )
                         }
                     }
                 } else {
                     BasicText(
                         text = text,
-                        style = typography.xs.center.medium.color(PureBlackColorPalette.text),
+                        style = typography.m.center.medium.color(PureBlackColorPalette.text),
                         modifier = Modifier
                             .verticalFadingEdge()
                             .verticalScroll(rememberScrollState())

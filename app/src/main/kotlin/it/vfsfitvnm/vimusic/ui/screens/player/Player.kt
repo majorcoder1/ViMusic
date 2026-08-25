@@ -345,6 +345,18 @@ fun Player(
                         .padding(horizontal = 8.dp)
                         .fillMaxHeight()
                 ) {
+                    // Lyrics were previously reachable only by tapping the artwork, which is not
+                    // something anyone discovers. Sits next to the queue handle so it reads as a
+                    // peer of it.
+                    IconButton(
+                        icon = R.drawable.text,
+                        color = if (isShowingLyrics) colorPalette.text else colorPalette.textDisabled,
+                        onClick = { isShowingLyrics = !isShowingLyrics },
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp, vertical = 8.dp)
+                            .size(20.dp)
+                    )
+
                     IconButton(
                         icon = R.drawable.ellipsis_horizontal,
                         color = colorPalette.text,
