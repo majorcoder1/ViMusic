@@ -109,15 +109,8 @@ fun Queue(
                     .fillMaxSize()
                     .padding(horizontalBottomPaddingValues)
             ) {
-                Image(
-                    painter = painterResource(R.drawable.playlist),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(colorPalette.text),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(18.dp)
-                )
-
+                // The queue glyph is laid out by the caller now, so it can sit alongside the
+                // other collapsed-bar controls instead of floating on its own.
                 content()
             }
         }

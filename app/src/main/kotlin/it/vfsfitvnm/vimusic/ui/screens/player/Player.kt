@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -337,6 +340,34 @@ fun Player(
         Queue(
             layoutState = playerBottomSheetState,
             content = {
+                // Queue and lyrics are the two things reached from here most often, so they sit
+                // together in the middle where the thumb lands. The track menu stays out at the
+                // edge, away from them.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxHeight()
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.playlist),
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(colorPalette.text),
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .size(20.dp)
+                    )
+
+                    IconButton(
+                        icon = R.drawable.text,
+                        color = if (isShowingLyrics) colorPalette.text else colorPalette.textDisabled,
+                        onClick = { isShowingLyrics = !isShowingLyrics },
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .size(20.dp)
+                    )
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
@@ -345,20 +376,10 @@ fun Player(
                         .padding(horizontal = 8.dp)
                         .fillMaxHeight()
                 ) {
-                    // Lyrics were previously reachable only by tapping the artwork, which is not
-                    // something anyone discovers. Sits next to the queue handle so it reads as a
-                    // peer of it.
+                    // Vertical and a size up from the other controls: this is the way into the
+                    // track menu and it was reading as decoration at 20dp lying on its side.
                     IconButton(
-                        icon = R.drawable.text,
-                        color = if (isShowingLyrics) colorPalette.text else colorPalette.textDisabled,
-                        onClick = { isShowingLyrics = !isShowingLyrics },
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp, vertical = 8.dp)
-                            .size(20.dp)
-                    )
-
-                    IconButton(
-                        icon = R.drawable.ellipsis_horizontal,
+                        icon = R.drawable.ellipsis_vertical,
                         color = colorPalette.text,
                         onClick = {
                             menuState.display {
@@ -371,7 +392,7 @@ fun Player(
                         },
                         modifier = Modifier
                             .padding(horizontal = 4.dp, vertical = 8.dp)
-                            .size(20.dp)
+                            .size(26.dp)
                     )
 
                     Spacer(
