@@ -27,25 +27,39 @@ class PoTokenGenerator(private val context: Context) {
     private var streamingPot: String? = null
     private var generator: PoTokenWebView? = null
 
+    /**
+     * Blocking entry point for the playback path, which is a synchronous callback.
+     *
+     * Prefer [awaitWebClientPoToken] anywhere a coroutine is already available — warming up ahead
+     * of time is what keeps this call cheap, since the expensive part (BotGuard cold start) then
+     * has already happened.
+     */
     fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
+        if (!webViewSupported || webViewBadImpl) return null
+        return try {
+            runBlocking { awaitWebClientPoToken(videoId, sessionId) }
+        } catch (e: Exception) {
+            Log.e(TAG, "poToken generation failed: ${e.message}", e)
+            null
+        }
+    }
+
+    /** Mints both tokens, reusing the existing WebView when one is already warm. */
+    suspend fun awaitWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
         if (!webViewSupported || webViewBadImpl) return null
 
         return try {
-            runBlocking {
-                withTimeout(POTOKEN_TIMEOUT_MS) { generate(videoId, sessionId, forceRecreate = false) }
-            }
+            withTimeout(POTOKEN_TIMEOUT_MS) { generate(videoId, sessionId, forceRecreate = false) }
         } catch (e: TimeoutCancellationException) {
             Log.e(TAG, "outer timeout wrapper fired: ${e.message}", e)
             // A WebView whose sandboxed process gets culled leaves this hanging forever; cap it so
             // playback can fall through to the non-PoToken clients instead of stalling.
             Log.w(TAG, "poToken generation timed out; continuing without one")
-            runBlocking {
-                lock.withLock {
-                    runCatching { withContext(Dispatchers.Main) { generator?.close() } }
-                    generator = null
-                    streamingPot = null
-                    this@PoTokenGenerator.sessionId = null
-                }
+            lock.withLock {
+                runCatching { withContext(Dispatchers.Main) { generator?.close() } }
+                generator = null
+                streamingPot = null
+                this@PoTokenGenerator.sessionId = null
             }
             null
         } catch (e: BadWebViewException) {

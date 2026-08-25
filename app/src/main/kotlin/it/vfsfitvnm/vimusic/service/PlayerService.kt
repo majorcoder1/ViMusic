@@ -25,6 +25,7 @@ import android.media.audiofx.LoudnessEnhancer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.util.Log
 import android.os.Handler
 import android.text.format.DateUtils
 import androidx.compose.runtime.getValue
@@ -191,6 +192,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 if (isSystemInDarkMode) Color.BLACK else Color.WHITE
             }
         )
+
+        warmUpPlaybackPipeline()
 
         createNotificationChannel()
 
@@ -751,6 +754,36 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
+    /**
+     * Prepares everything playback needs before a track is ever requested.
+     *
+     * Resolving a stream is a synchronous callback on an ExoPlayer loader thread, so anything not
+     * ready by then has to be waited for inline: a visitor-id round trip, a ~2.9 MB player script
+     * download, two WebViews and a BotGuard cold start. Doing that lazily made the first play of a
+     * session stall for several seconds and put WebView construction on the main thread while the
+     * UI was still settling. Warming up here means the resolver usually finds a cached answer, and
+     * a cold start only ever costs the warm-up coroutine.
+     */
+    private fun warmUpPlaybackPipeline() {
+        coroutineScope.launch {
+            val session = runCatching { VisitorData.get() }.getOrNull()
+            if (session == null) {
+                Log.d(TAG, "warm-up: no visitor id yet, playback will retry")
+                return@launch
+            }
+
+            val cipherReady = runCatching { Cipher.ensureReady(this@PlayerService) }.getOrDefault(false)
+
+            // Minting against a throwaway id is enough to pay for the BotGuard cold start; the
+            // session-bound half of the result is what later calls reuse.
+            val token = runCatching {
+                poTokenGenerator.awaitWebClientPoToken(WarmUpVideoId, session)
+            }.getOrNull()
+
+            Log.d(TAG, "warm-up done: cipher=$cipherReady token=${token != null}")
+        }
+    }
+
     private fun createCacheDataSource(): DataSource.Factory {
         return CacheDataSource.Factory().setCache(cache).apply {
             setUpstreamDataSourceFactory(
@@ -1063,6 +1096,14 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     private companion object {
+        const val TAG = "PlayerService"
+
+        /**
+         * Any stable id works; the token minted for it is discarded. It exists only so the
+         * BotGuard cold start happens during warm-up rather than on the first play.
+         */
+        const val WarmUpVideoId = "jNQXAC9IVRw"
+
         const val NotificationId = 1001
         const val NotificationChannelId = "default_channel_id"
 
