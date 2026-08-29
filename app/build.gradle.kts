@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +20,26 @@ android {
         versionName = "0.6.0"
     }
 
+    // Release signing is read from keystore.properties, which is deliberately untracked: the
+    // keystore and its password must never enter the repository. Without that file the release
+    // build falls back to the debug key below, which is fine for local builds but must not be
+    // used for anything published -- the debug key ships with the SDK and everyone has it.
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    if (keystorePropertiesFile.exists()) {
+        val keystoreProperties = Properties().apply {
+            keystorePropertiesFile.inputStream().use(::load)
+        }
+
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -28,7 +50,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             manifestPlaceholders["appName"] = "ViMusic"
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to the debug key when no keystore.properties is present, so a fresh
+            // clone -- or F-Droid, which signs with its own key anyway -- still builds.
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
