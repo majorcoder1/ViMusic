@@ -46,10 +46,19 @@ class PoTokenGenerator(private val context: Context) {
 
     /** Mints both tokens, reusing the existing WebView when one is already warm. */
     suspend fun awaitWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
-        if (!webViewSupported || webViewBadImpl) return null
+        // Returning null here used to be silent, which made "playback quietly downgraded itself"
+        // impossible to tell apart from "the token was never asked for".
+        if (!webViewSupported || webViewBadImpl) {
+            Log.w(TAG, "poToken skipped: webViewSupported=$webViewSupported badImpl=$webViewBadImpl")
+            return null
+        }
 
         return try {
-            withTimeout(POTOKEN_TIMEOUT_MS) { generate(videoId, sessionId, forceRecreate = false) }
+            val result = withTimeout(POTOKEN_TIMEOUT_MS) {
+                generate(videoId, sessionId, forceRecreate = false)
+            }
+            if (result == null) Log.w(TAG, "poToken generator returned nothing")
+            result
         } catch (e: TimeoutCancellationException) {
             Log.e(TAG, "outer timeout wrapper fired: ${e.message}", e)
             // A WebView whose sandboxed process gets culled leaves this hanging forever; cap it so

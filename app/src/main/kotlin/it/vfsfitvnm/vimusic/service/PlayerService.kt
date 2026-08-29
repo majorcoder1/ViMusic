@@ -23,6 +23,8 @@ import android.media.MediaMetadata
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.LoudnessEnhancer
 import android.media.session.MediaSession
+import android.media.Rating
+import android.os.Bundle
 import android.media.session.PlaybackState
 import android.net.Uri
 import android.util.Log
@@ -94,11 +96,11 @@ import it.vfsfitvnm.vimusic.utils.exoPlayerDiskCacheMaxSizeKey
 import it.vfsfitvnm.vimusic.utils.findNextMediaItemById
 import it.vfsfitvnm.vimusic.utils.forcePlayFromBeginning
 import it.vfsfitvnm.vimusic.utils.forceSeekToNext
+import it.vfsfitvnm.vimusic.utils.thumbnail
 import it.vfsfitvnm.vimusic.utils.forceSeekToPrevious
 import it.vfsfitvnm.vimusic.utils.getEnum
 import it.vfsfitvnm.vimusic.utils.intent
 import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid13
-import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid6
 import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid8
 import it.vfsfitvnm.vimusic.utils.isInvincibilityEnabledKey
 import it.vfsfitvnm.vimusic.utils.isShowingThumbnailInLockscreenKey
@@ -120,29 +122,40 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.runBlocking
 
 @Suppress("DEPRECATION")
+/** Custom transport action surfaced on the Android Auto now-playing screen. */
+internal const val ACTION_START_RADIO = "it.vfsfitvnm.vimusic.START_RADIO"
+internal const val ACTION_SHUFFLE = "it.vfsfitvnm.vimusic.SHUFFLE"
+internal const val ACTION_REPEAT = "it.vfsfitvnm.vimusic.REPEAT"
+
+// Big enough for a car display without being wasteful on a phone notification.
+private const val NowPlayingArtworkSize = 1024
+
+private const val BaseActions = PlaybackState.ACTION_PLAY or
+    PlaybackState.ACTION_PAUSE or
+    PlaybackState.ACTION_PLAY_PAUSE or
+    PlaybackState.ACTION_STOP or
+    PlaybackState.ACTION_SKIP_TO_PREVIOUS or
+    PlaybackState.ACTION_SKIP_TO_NEXT or
+    PlaybackState.ACTION_SKIP_TO_QUEUE_ITEM or
+    PlaybackState.ACTION_SEEK_TO or
+    PlaybackState.ACTION_REWIND or
+    // Android Auto only draws a control if the session advertises it. Rating is what gets us
+    // the heart on the car's now-playing screen.
+    PlaybackState.ACTION_SET_RATING or
+    PlaybackState.ACTION_PLAY_FROM_MEDIA_ID or
+    PlaybackState.ACTION_PLAY_FROM_SEARCH
+
 class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListener.Callback,
     SharedPreferences.OnSharedPreferenceChangeListener {
     private lateinit var mediaSession: MediaSession
     private lateinit var cache: SimpleCache
     private lateinit var player: ExoPlayer
-
-    private val stateBuilder = PlaybackState.Builder()
-        .setActions(
-            PlaybackState.ACTION_PLAY
-                    or PlaybackState.ACTION_PAUSE
-                    or PlaybackState.ACTION_PLAY_PAUSE
-                    or PlaybackState.ACTION_STOP
-                    or PlaybackState.ACTION_SKIP_TO_PREVIOUS
-                    or PlaybackState.ACTION_SKIP_TO_NEXT
-                    or PlaybackState.ACTION_SKIP_TO_QUEUE_ITEM
-                    or PlaybackState.ACTION_SEEK_TO
-                    or PlaybackState.ACTION_REWIND
-        )
 
     private val metadataBuilder = MediaMetadata.Builder()
 
@@ -151,6 +164,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private var timerJob: TimerJob? = null
 
     private var radio: YouTubeRadio? = null
+    private var likeStatusJob: Job? = null
+    private var isCurrentSongLiked = false
 
     private lateinit var bitmapProvider: BitmapProvider
     private val poTokenGenerator by lazy { PoTokenGenerator(this) }
@@ -257,7 +272,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         mediaSession = MediaSession(baseContext, "PlayerService")
         mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
         mediaSession.setCallback(SessionCallback(player))
-        mediaSession.setPlaybackState(stateBuilder.build())
+        mediaSession.setRatingType(Rating.RATING_HEART)
+        mediaSession.setPlaybackState(playbackState)
         mediaSession.isActive = true
 
         notificationActionReceiver = NotificationActionReceiver(player)
@@ -503,6 +519,71 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
+    /**
+     * Shuffle and repeat are not transport actions on the framework session -- only on the
+     * compat one -- so they ride along as custom actions, which is also what lets each icon
+     * reflect the current mode instead of being a static glyph.
+     */
+    private val playbackState: PlaybackState
+        get() = PlaybackState.Builder()
+            .setActions(BaseActions)
+            .setState(player.androidPlaybackState, player.currentPosition, 1f)
+            .setBufferedPosition(player.bufferedPosition)
+            .addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    ACTION_SHUFFLE,
+                    if (player.shuffleModeEnabled) "Shuffle on" else "Shuffle",
+                    if (player.shuffleModeEnabled) R.drawable.shuffle else R.drawable.shuffle_off
+                ).build()
+            )
+            .addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    ACTION_REPEAT,
+                    when (player.repeatMode) {
+                        Player.REPEAT_MODE_ONE -> "Repeat one"
+                        Player.REPEAT_MODE_ALL -> "Repeat all"
+                        else -> "Repeat"
+                    },
+                    when (player.repeatMode) {
+                        Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
+                        Player.REPEAT_MODE_ALL -> R.drawable.repeat
+                        else -> R.drawable.repeat_off
+                    }
+                ).build()
+            )
+            .addCustomAction(
+                PlaybackState.CustomAction
+                    .Builder(ACTION_START_RADIO, "Start radio", R.drawable.radio)
+                    .build()
+            )
+            .build()
+
+    /**
+     * Keeps [isCurrentSongLiked] in step with the database so the heart in the car reflects a
+     * like made on the phone, and vice versa, without either side polling.
+     */
+    private fun watchLikeStatus() {
+        likeStatusJob?.cancel()
+        val songId = player.currentMediaItem?.mediaId ?: run {
+            isCurrentSongLiked = false
+            return
+        }
+
+        likeStatusJob = coroutineScope.launch(Dispatchers.Main) {
+            Database.likedAt(songId).cancellable().collectLatest { likedAt ->
+                isCurrentSongLiked = likedAt != null
+                if (player.duration != C.TIME_UNSET) mediaSession.setMetadata(
+                    metadataBuilder
+                        .putRating(
+                            MediaMetadata.METADATA_KEY_USER_RATING,
+                            Rating.newHeartRating(isCurrentSongLiked)
+                        )
+                        .build()
+                )
+            }
+        }
+    }
+
     private fun maybeShowSongCoverInLockScreen() {
         val bitmap =
             if (isAtLeastAndroid13 || isShowingThumbnailInLockscreen) bitmapProvider.bitmap else null
@@ -521,8 +602,6 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     @SuppressLint("NewApi")
     private fun maybeResumePlaybackWhenDeviceConnected() {
-        if (!isAtLeastAndroid6) return
-
         if (preferences.getBoolean(resumePlaybackWhenDeviceConnectedKey, false)) {
             if (audioManager == null) {
                 audioManager = getSystemService(AUDIO_SERVICE) as AudioManager?
@@ -583,6 +662,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
 
     override fun onEvents(player: Player, events: Player.Events) {
+        if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) watchLikeStatus()
+
         if (player.duration != C.TIME_UNSET) {
             mediaSession.setMetadata(
                 metadataBuilder
@@ -590,15 +671,26 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     .putText(MediaMetadata.METADATA_KEY_ARTIST, player.mediaMetadata.artist)
                     .putText(MediaMetadata.METADATA_KEY_ALBUM, player.mediaMetadata.albumTitle)
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, player.duration)
+                    // The notification bitmap is sized for a phone; giving the car a URI instead
+                    // lets it fetch artwork at whatever size its own screen wants.
+                    .putString(
+                        MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                        player.mediaMetadata.artworkUri?.toString().thumbnail(NowPlayingArtworkSize)
+                    )
+                    .putString(
+                        MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI,
+                        player.mediaMetadata.artworkUri?.toString().thumbnail(NowPlayingArtworkSize)
+                    )
+                    .putRating(
+                        MediaMetadata.METADATA_KEY_USER_RATING,
+                        Rating.newHeartRating(isCurrentSongLiked)
+                    )
                     .build()
             )
         }
 
-        stateBuilder
-            .setState(player.androidPlaybackState, player.currentPosition, 1f)
-            .setBufferedPosition(player.bufferedPosition)
 
-        mediaSession.setPlaybackState(stateBuilder.build())
+        mediaSession.setPlaybackState(playbackState)
 
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
@@ -766,9 +858,25 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
      */
     private fun warmUpPlaybackPipeline() {
         coroutineScope.launch {
+            // Logged before anything can fail, and offline too: these five numbers say exactly
+            // which browse tabs the car will be able to fill, which is otherwise only knowable
+            // by plugging into a car and looking.
+            runCatching {
+                Log.i(
+                    TAG,
+                    "library: songs=${Database.songsByPlayTimeDesc().first().size} " +
+                        "artists=${Database.artistsInLibrary().first().size} " +
+                        "albums=${Database.albumsInLibrary().first().size} " +
+                        "playlists=${Database.playlistPreviewsByDateAddedDesc().first().size} " +
+                        "liked=${Database.likedSongsCount().first()}"
+                )
+            }
+
             val session = runCatching { VisitorData.get() }.getOrNull()
             if (session == null) {
-                Log.d(TAG, "warm-up: no visitor id yet, playback will retry")
+                // Warn, not debug: this survives into release, where it is the only clue that
+                // the pipeline degraded rather than failed outright.
+                Log.w(TAG, "warm-up: no visitor id (${VisitorData.lastFailure}), playback will retry")
                 return@launch
             }
 
@@ -778,9 +886,11 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             // session-bound half of the result is what later calls reuse.
             val token = runCatching {
                 poTokenGenerator.awaitWebClientPoToken(WarmUpVideoId, session)
+            }.onFailure {
+                Log.w(TAG, "warm-up: poToken threw ${'$'}{it.javaClass.simpleName}: ${'$'}{it.message}")
             }.getOrNull()
 
-            Log.d(TAG, "warm-up done: cipher=$cipherReady token=${token != null}")
+            Log.i(TAG, "warm-up done: cipher=$cipherReady token=${token != null}")
         }
     }
 
@@ -823,10 +933,13 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         val poToken = session?.let { poTokenGenerator.getWebClientPoToken(videoId, it) }
 
                         val useWebClient = cipherReady && poToken != null && session != null
-                        android.util.Log.d(
-                            "VMPot",
-                            "useWebClient=$useWebClient cipherReady=$cipherReady sts=${Cipher.signatureTimestamp} " +
-                                "pot=${poToken != null}"
+                        // Kept at info: this one line is what identifies a broken playback
+                        // pipeline in the field, and it carries no values, only whether each
+                        // piece resolved.
+                        Log.i(
+                            TAG,
+                            "resolver: webClient=$useWebClient cipher=$cipherReady " +
+                                "sts=${Cipher.signatureTimestamp} poToken=${poToken != null}"
                         )
 
                         val playerContext =
@@ -851,11 +964,27 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                                 )
                             )
                         }?.mapCatching { body ->
-                            if (body.videoDetails?.videoId != videoId) {
+                            val status = body.playabilityStatus?.status
+                            val returnedVideoId = body.videoDetails?.videoId
+
+                            // Logged before anything can throw. A track that will not play leaves
+                            // no other trace, and the reason is YouTube's own wording.
+                            if (status != "OK") Log.i(
+                                TAG,
+                                "player refused $videoId: status=$status " +
+                                    "reason=${body.playabilityStatus?.reason} webClient=$useWebClient"
+                            )
+
+                            // Only compare ids when a video actually came back. A refusal carries
+                            // no videoDetails at all, so the old unconditional check turned every
+                            // failure -- deleted, region-locked, bot-checked -- into "the returned
+                            // video id doesn't match the requested one", and threw before the
+                            // status below could give the real reason.
+                            if (returnedVideoId != null && returnedVideoId != videoId) {
                                 throw VideoIdMismatchException()
                             }
 
-                            when (val status = body.playabilityStatus?.status) {
+                            when (status) {
                                 "OK" -> body.streamingData?.highestQualityFormat?.let { format ->
                                     val mediaItem = runBlocking(Dispatchers.Main) {
                                         player.findNextMediaItemById(videoId)
@@ -1049,7 +1178,39 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
-    private class SessionCallback(private val player: Player) : MediaSession.Callback() {
+    /**
+     * Open so that [PlayerMediaBrowserService] can extend it: Android Auto replaces the session
+     * callback when it binds, and the transport controls below have to keep working when it does.
+     */
+    internal open class SessionCallback(private val player: Player) : MediaSession.Callback() {
+        override fun onSetRating(rating: Rating) {
+            // Guard hard. hasHeart() is false for every rating that is not a *set* heart --
+            // thumbs, stars, or an unrated placeholder -- and the old code turned all of those
+            // into "clear the like", so an unrelated controller could silently wipe a favourite.
+            if (rating.ratingStyle != Rating.RATING_HEART || !rating.isRated) {
+                Log.i(TAG, "ignoring non-heart rating (style=${rating.ratingStyle} rated=${rating.isRated})")
+                return
+            }
+
+            val songId = player.currentMediaItem?.mediaId ?: return
+            val likedAt = if (rating.hasHeart()) System.currentTimeMillis() else null
+            Log.i(TAG, "like via media session: song=$songId liked=${likedAt != null}")
+            query { Database.like(songId, likedAt) }
+        }
+
+        override fun onCustomAction(action: String, extras: Bundle?) = when (action) {
+            ACTION_SHUFFLE -> player.shuffleModeEnabled = !player.shuffleModeEnabled
+
+            // Cycles off -> all -> one, the order a driver expects from a single button.
+            ACTION_REPEAT -> player.repeatMode = when (player.repeatMode) {
+                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                else -> Player.REPEAT_MODE_OFF
+            }
+
+            else -> Unit
+        }
+
         override fun onPlay() = player.play()
         override fun onPause() = player.pause()
         override fun onSkipToPrevious() = runCatching(player::forceSeekToPrevious).let { }
@@ -1084,7 +1245,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 context,
                 100,
                 Intent(value).setPackage(context.packageName),
-                PendingIntent.FLAG_UPDATE_CURRENT.or(if (isAtLeastAndroid6) PendingIntent.FLAG_IMMUTABLE else 0)
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
         companion object {

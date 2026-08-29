@@ -93,8 +93,10 @@ class PoTokenWebView private constructor(
                 val msg = m.message()
                 // Log all console messages for debugging
                 when (m.messageLevel()) {
-                    ConsoleMessage.MessageLevel.ERROR -> Log.e(TAG, "JS: $msg")
-                    ConsoleMessage.MessageLevel.WARNING -> Log.w(TAG, "JS: $msg")
+                    // Error and warning survive into release builds, so they are truncated:
+                    // the token script prints values this code does not control.
+                    ConsoleMessage.MessageLevel.ERROR -> Log.e(TAG, "JS: ${msg.take(200)}")
+                    ConsoleMessage.MessageLevel.WARNING -> Log.w(TAG, "JS: ${msg.take(200)}")
                     else -> Log.d(TAG, "JS: $msg")
                 }
 
@@ -214,15 +216,15 @@ class PoTokenWebView private constructor(
      */
     @JavascriptInterface
     fun onRunBotguardResult(botguardResponse: String) {
-        Log.d(TAG, "botguardResponse: $botguardResponse")
+        Log.d(TAG, "botguard response received (${botguardResponse.length} chars)")
         makeBotguardServiceRequest(
             "https://www.youtube.com/api/jnn/v1/GenerateIT",
             "[ \"$REQUEST_KEY\", \"$botguardResponse\" ]",
         ) { responseBody ->
-            Log.d(TAG, "GenerateIT response: $responseBody")
+            Log.d(TAG, "GenerateIT responded (${responseBody.length} chars)")
             try {
                 val (integrityToken, expirationTimeInSeconds) = parseIntegrityTokenData(responseBody)
-                Log.d(TAG, "Parsed integrityToken (${integrityToken.take(50)}...), expires in $expirationTimeInSeconds sec")
+                Log.d(TAG, "integrity token parsed, expires in $expirationTimeInSeconds sec")
 
                 // leave 10 minutes of margin just to be sure
                 expirationInstant = Instant.now().plusSeconds(expirationTimeInSeconds).minus(10, ChronoUnit.MINUTES)
@@ -295,7 +297,7 @@ class PoTokenWebView private constructor(
     private suspend fun generatePoTokenInternal(identifier: String, requestKey: String): String {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { cont ->
-                Log.d(TAG, "generatePoToken() called with identifier $identifier")
+                Log.d(TAG, "generatePoToken() called")
                 addPoTokenEmitter(requestKey, cont)
                 // The IIFE keeps requestKey/u8Identifier lexically captured per call: bare globals
                 // here would let a concurrent call reassign them before this call's promise
@@ -342,7 +344,7 @@ class PoTokenWebView private constructor(
      */
     @JavascriptInterface
     fun onObtainPoTokenResult(requestKey: String, poTokenU8: String) {
-        Log.d(TAG, "Generated poToken (before decoding): requestKey=$requestKey poTokenU8=$poTokenU8")
+        Log.d(TAG, "poToken received from JavaScript (${poTokenU8.length} chars)")
         val poToken = try {
             u8ToBase64(poTokenU8)
         } catch (t: Throwable) {
@@ -350,7 +352,7 @@ class PoTokenWebView private constructor(
             return
         }
 
-        Log.d(TAG, "Generated poToken: requestKey=$requestKey poToken=$poToken")
+        Log.d(TAG, "poToken decoded (${poToken.length} chars)")
         popPoTokenContinuation(requestKey)?.resume(poToken)
     }
 

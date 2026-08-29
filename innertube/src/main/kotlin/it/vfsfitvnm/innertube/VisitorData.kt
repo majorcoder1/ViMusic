@@ -14,9 +14,22 @@ object VisitorData {
     @Volatile
     private var cached: String? = null
 
+    /** Set by [get] when a fetch fails, so callers can report why rather than just "no id". */
+    @Volatile
+    var lastFailure: String? = null
+        private set
+
     suspend fun get(): String? {
         cached?.let { return it }
-        return runCatching { fetch() }.getOrNull()?.also { cached = it }
+        return runCatching { fetch() }
+            .onFailure {
+                // Swallowing this used to make an unreachable YouTube indistinguishable from a
+                // malformed response, which is the difference between "wait" and "something broke".
+                lastFailure = "${it.javaClass.simpleName}: ${it.message}"
+            }
+            .onSuccess { lastFailure = if (it == null) "response carried no visitorData" else null }
+            .getOrNull()
+            ?.also { cached = it }
     }
 
     private suspend fun fetch(): String? {

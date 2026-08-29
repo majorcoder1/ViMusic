@@ -11,7 +11,9 @@ data class PlayerResponse(
 ) {
     @Serializable
     data class PlayabilityStatus(
-        val status: String?
+        val status: String?,
+        /** YouTube's own words for a refusal, e.g. "Video unavailable". Already in the mask. */
+        val reason: String? = null
     )
 
     @Serializable
