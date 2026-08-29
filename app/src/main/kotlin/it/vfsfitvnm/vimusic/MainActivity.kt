@@ -86,7 +86,6 @@ import it.vfsfitvnm.vimusic.utils.colorPaletteNameKey
 import it.vfsfitvnm.vimusic.utils.forcePlay
 import it.vfsfitvnm.vimusic.utils.getEnum
 import it.vfsfitvnm.vimusic.utils.intent
-import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid6
 import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid8
 import it.vfsfitvnm.vimusic.utils.preferences
 import it.vfsfitvnm.vimusic.utils.thumbnailRoundnessKey
@@ -462,11 +461,10 @@ class MainActivity : ComponentActivity(), PersistMapOwner {
             isAppearanceLightNavigationBars = !isDark
         }
 
-        if (!isAtLeastAndroid6) {
-            window.statusBarColor =
-                (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()
-        }
-
+        // Still meaningful below API 26, where the navigation bar does not scrim itself and the
+        // property is not yet the no-op it became in API 35. Above that the insets controller
+        // above is the whole story.
+        @Suppress("DEPRECATION")
         if (!isAtLeastAndroid8) {
             window.navigationBarColor =
                 (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()

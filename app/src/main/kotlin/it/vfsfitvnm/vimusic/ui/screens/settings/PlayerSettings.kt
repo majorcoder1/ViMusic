@@ -24,7 +24,6 @@ import it.vfsfitvnm.vimusic.LocalPlayerAwareWindowInsets
 import it.vfsfitvnm.vimusic.LocalPlayerServiceBinder
 import it.vfsfitvnm.vimusic.ui.components.themed.Header
 import it.vfsfitvnm.vimusic.ui.styling.LocalAppearance
-import it.vfsfitvnm.vimusic.utils.isAtLeastAndroid6
 import it.vfsfitvnm.vimusic.utils.persistentQueueKey
 import it.vfsfitvnm.vimusic.utils.rememberPreference
 import it.vfsfitvnm.vimusic.utils.resumePlaybackWhenDeviceConnectedKey
@@ -74,16 +73,14 @@ fun PlayerSettings() {
             }
         )
 
-        if (isAtLeastAndroid6) {
-            SwitchSettingEntry(
-                title = "Resume playback",
-                text = "When a wired or bluetooth device is connected",
-                isChecked = resumePlaybackWhenDeviceConnected,
-                onCheckedChange = {
-                    resumePlaybackWhenDeviceConnected = it
-                }
-            )
-        }
+        SwitchSettingEntry(
+            title = "Resume playback",
+            text = "When a wired or bluetooth device is connected",
+            isChecked = resumePlaybackWhenDeviceConnected,
+            onCheckedChange = {
+                resumePlaybackWhenDeviceConnected = it
+            }
+        )
 
         SettingsGroupSpacer()
 
