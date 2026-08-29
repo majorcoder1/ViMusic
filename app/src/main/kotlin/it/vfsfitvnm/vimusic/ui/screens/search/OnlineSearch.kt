@@ -21,6 +21,16 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import it.vfsfitvnm.vimusic.LocalPlayerServiceBinder
+import it.vfsfitvnm.vimusic.ui.items.AlbumItem
+import it.vfsfitvnm.vimusic.ui.items.ArtistItem
+import it.vfsfitvnm.vimusic.ui.items.PlaylistItem
+import it.vfsfitvnm.vimusic.ui.items.SongItem
+import it.vfsfitvnm.vimusic.ui.items.VideoItem
+import it.vfsfitvnm.vimusic.ui.styling.Dimensions
+import it.vfsfitvnm.vimusic.utils.asMediaItem
+import it.vfsfitvnm.vimusic.utils.forcePlay
+import it.vfsfitvnm.vimusic.ui.styling.px
 import it.vfsfitvnm.vimusic.ui.styling.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -73,11 +83,17 @@ fun OnlineSearch(
     onTextFieldValueChanged: (TextFieldValue) -> Unit,
     onSearch: (String) -> Unit,
     onViewPlaylist: (String) -> Unit,
+    onViewArtist: (String) -> Unit,
+    onViewAlbum: (String) -> Unit,
+    onViewPlaylistId: (String) -> Unit,
     decorationBox: @Composable (@Composable () -> Unit) -> Unit
 ) {
     val context = LocalContext.current
 
     val (colorPalette, typography) = LocalAppearance.current
+    val binder = LocalPlayerServiceBinder.current
+    val thumbnailSizeDp = Dimensions.thumbnails.song
+    val thumbnailSizePx = thumbnailSizeDp.px
 
     var history by persistList<SearchQuery>("search/online/history")
 
@@ -89,7 +105,7 @@ fun OnlineSearch(
         }
     }
 
-    var suggestionsResult by persist<Result<List<String>?>?>("search/online/suggestionsResult")
+    var suggestionsResult by persist<Result<Innertube.SearchSuggestions?>?>("search/online/suggestionsResult")
 
     LaunchedEffect(textFieldValue.text) {
         if (textFieldValue.text.isNotEmpty()) {
@@ -252,7 +268,7 @@ fun OnlineSearch(
             }
 
             suggestionsResult?.getOrNull()?.let { suggestions ->
-                items(items = suggestions) { suggestion ->
+                items(items = suggestions.queries) { suggestion ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -294,6 +310,60 @@ fun OnlineSearch(
                                 .rotate(225f)
                                 .padding(horizontal = 8.dp)
                                 .size(22.dp)
+                        )
+                    }
+                }
+
+                // The entities YouTube ranks for what has been typed: the artist, their songs,
+                // their playlists. Far more useful than the completions above, and the reason the
+                // Artists tab's "similar artists" padding never needs to be waded through.
+                items(items = suggestions.items, key = { it.key }) { item ->
+                    when (item) {
+                        is Innertube.ArtistItem -> ArtistItem(
+                            artist = item,
+                            thumbnailSizePx = thumbnailSizePx,
+                            thumbnailSizeDp = thumbnailSizeDp,
+                            modifier = Modifier.clickable {
+                                item.info?.endpoint?.browseId?.let(onViewArtist)
+                            }
+                        )
+
+                        is Innertube.AlbumItem -> AlbumItem(
+                            album = item,
+                            thumbnailSizePx = thumbnailSizePx,
+                            thumbnailSizeDp = thumbnailSizeDp,
+                            modifier = Modifier.clickable {
+                                item.info?.endpoint?.browseId?.let(onViewAlbum)
+                            }
+                        )
+
+                        is Innertube.PlaylistItem -> PlaylistItem(
+                            playlist = item,
+                            thumbnailSizePx = thumbnailSizePx,
+                            thumbnailSizeDp = thumbnailSizeDp,
+                            modifier = Modifier.clickable {
+                                item.info?.endpoint?.browseId?.let(onViewPlaylistId)
+                            }
+                        )
+
+                        is Innertube.SongItem -> SongItem(
+                            song = item,
+                            thumbnailSizePx = thumbnailSizePx,
+                            thumbnailSizeDp = thumbnailSizeDp,
+                            modifier = Modifier.clickable {
+                                binder?.stopRadio()
+                                binder?.player?.forcePlay(item.asMediaItem)
+                            }
+                        )
+
+                        is Innertube.VideoItem -> VideoItem(
+                            video = item,
+                            thumbnailHeightDp = thumbnailSizeDp,
+                            thumbnailWidthDp = thumbnailSizeDp,
+                            modifier = Modifier.clickable {
+                                binder?.stopRadio()
+                                binder?.player?.forcePlay(item.asMediaItem)
+                            }
                         )
                     }
                 }

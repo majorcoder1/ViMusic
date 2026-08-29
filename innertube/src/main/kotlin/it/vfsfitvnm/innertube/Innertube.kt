@@ -216,6 +216,12 @@ object Innertube {
         val artists: List<ArtistItem>? = null,
     )
 
+    /** Query completions and the entities YouTube ranks for a partially typed search. */
+    data class SearchSuggestions(
+        val queries: List<String>,
+        val items: List<Item>
+    )
+
     data class ItemsPage<T : Item>(
         val items: List<T>?,
         val continuation: String?

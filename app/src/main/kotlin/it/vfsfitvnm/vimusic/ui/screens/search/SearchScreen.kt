@@ -30,7 +30,10 @@ import it.vfsfitvnm.vimusic.utils.secondary
 fun SearchScreen(
     initialTextInput: String,
     onSearch: (String) -> Unit,
-    onViewPlaylist: (String) -> Unit
+    onViewPlaylist: (String) -> Unit,
+    onViewArtist: (String) -> Unit,
+    onViewAlbum: (String) -> Unit,
+    onViewPlaylistId: (String) -> Unit
 ) {
     val saveableStateHolder = rememberSaveableStateHolder()
 
@@ -93,6 +96,9 @@ fun SearchScreen(
                             onTextFieldValueChanged = onTextFieldValueChanged,
                             onSearch = onSearch,
                             onViewPlaylist = onViewPlaylist,
+                            onViewArtist = onViewArtist,
+                            onViewAlbum = onViewAlbum,
+                            onViewPlaylistId = onViewPlaylistId,
                             decorationBox = decorationBox
                         )
 

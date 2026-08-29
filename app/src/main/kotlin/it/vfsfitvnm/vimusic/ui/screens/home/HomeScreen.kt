@@ -103,7 +103,10 @@ fun HomeScreen(onPlaylistUrl: (String) -> Unit) {
                         }
                     }
                 },
-                onViewPlaylist = onPlaylistUrl
+                onViewPlaylist = onPlaylistUrl,
+                onViewArtist = { browseId -> pop(); artistRoute(browseId) },
+                onViewAlbum = { browseId -> pop(); albumRoute(browseId) },
+                onViewPlaylistId = { browseId -> pop(); playlistRoute(browseId) }
             )
         }
 

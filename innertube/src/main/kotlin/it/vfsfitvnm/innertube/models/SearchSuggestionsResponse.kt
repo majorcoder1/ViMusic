@@ -2,6 +2,11 @@ package it.vfsfitvnm.innertube.models
 
 import kotlinx.serialization.Serializable
 
+/**
+ * The suggestions endpoint answers with two sections: plain query completions, and a set of real
+ * entities -- the artist, their songs, a playlist -- already ranked by YouTube. Only the first was
+ * ever parsed, so the second was requested away by the field mask and discarded.
+ */
 @Serializable
 data class SearchSuggestionsResponse(
     val contents: List<Content>?
@@ -16,7 +21,8 @@ data class SearchSuggestionsResponse(
         ) {
             @Serializable
             data class Content(
-                val searchSuggestionRenderer: SearchSuggestionRenderer?
+                val searchSuggestionRenderer: SearchSuggestionRenderer?,
+                val musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer? = null
             ) {
                 @Serializable
                 data class SearchSuggestionRenderer(
