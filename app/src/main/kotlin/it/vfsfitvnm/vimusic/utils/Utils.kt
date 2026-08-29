@@ -76,13 +76,26 @@ val Song.asMediaItem: MediaItem
         .setCustomCacheKey(id)
         .build()
 
+/**
+ * YouTube hands back thumbnails already sized for a phone list -- typically 60 or 120 pixels --
+ * with the size baked into directives after the '=' in the URL. Those directives are replaced
+ * rather than appended to, so a URL that has been through here before does not accumulate them.
+ */
 fun String?.thumbnail(size: Int): String? {
-    return when {
-        this?.startsWith("https://lh3.googleusercontent.com") == true -> "$this-w$size-h$size"
-        this?.startsWith("https://yt3.ggpht.com") == true -> "$this-w$size-h$size-s$size"
-        else -> this
-    }
+    val url = this ?: return null
+    return if (GoogleImageHosts.any(url::startsWith)) {
+        "${url.substringBefore('=')}=w$size-h$size-l90-rj"
+    } else url
 }
+
+// yt3.googleusercontent.com is the host YouTube actually returns now; leaving it out meant
+// every thumbnail was served at its original 60px and upscaled by whatever displayed it.
+private val GoogleImageHosts = listOf(
+    "https://lh3.googleusercontent.com",
+    "https://yt3.googleusercontent.com",
+    "https://yt3.ggpht.com",
+    "https://music.youtube.com/image"
+)
 
 fun Uri?.thumbnail(size: Int): Uri? {
     return toString().thumbnail(size)?.toUri()
@@ -106,9 +119,6 @@ suspend fun Result<Innertube.PlaylistOrAlbumPage>.completed(): Result<Innertube.
 
     return Result.success(playlistPage)
 }
-
-inline val isAtLeastAndroid6
-    get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
 
 inline val isAtLeastAndroid8
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O

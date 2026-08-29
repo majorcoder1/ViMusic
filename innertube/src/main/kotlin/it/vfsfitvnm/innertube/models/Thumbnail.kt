@@ -11,11 +11,21 @@ data class Thumbnail(
     val isResizable: Boolean
         get() = !url.startsWith("https://i.ytimg.com")
 
-    fun size(size: Int): String {
-        return when {
-            url.startsWith("https://lh3.googleusercontent.com") -> "$url-w$size-h$size"
-            url.startsWith("https://yt3.ggpht.com") -> "$url-s$size"
-            else -> url
-        }
+    /**
+     * Replaces the size directives YouTube bakes into the URL rather than appending to them.
+     * The returned URLs are already sized for a phone list, so appending leaves a 60px image
+     * that anything larger has to upscale.
+     */
+    fun size(size: Int): String = if (ResizableHosts.any(url::startsWith)) {
+        "${url.substringBefore('=')}=w$size-h$size-l90-rj"
+    } else url
+
+    private companion object {
+        val ResizableHosts = listOf(
+            "https://lh3.googleusercontent.com",
+            "https://yt3.googleusercontent.com",
+            "https://yt3.ggpht.com",
+            "https://music.youtube.com/image"
+        )
     }
 }
