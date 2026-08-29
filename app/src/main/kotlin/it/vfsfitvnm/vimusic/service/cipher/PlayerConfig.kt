@@ -8,14 +8,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
 /**
- * Which call to make for a given player build.
+ * A curated fallback naming the call to make for a given player build.
  *
- * YouTube's player no longer contains anything stable to pattern-match against — function identity
- * is computed at runtime from XOR'd string-table indices, so the old approach of locating the
- * signature and `n` functions by regex cannot work any more. Instead a small curated registry names
- * the call for each player hash, and the real player script supplies the implementation.
+ * This used to be the only source of truth, which meant playback died whenever the upstream copy
+ * stopped being updated. [CipherWebView] now discovers both entry points by probing the player
+ * itself, and this is consulted only when that fails -- a backstop rather than a dependency.
  *
- * Registry format and the n-transform wrapper follow zemer-cipher (GPL-3.0).
+ * Registry format follows zemer-cipher (GPL-3.0).
  */
 object PlayerConfig {
     private const val TAG = "PlayerConfig"
@@ -31,9 +30,13 @@ object PlayerConfig {
 
     data class Entry(
         val signatureExpression: String,
-        val nExpression: String,
+        val nClass: String,
         val signatureTimestamp: Int
     )
+
+    /** Guards values that reach the cipher WebView, wherever they came from. */
+    fun isWellFormed(signatureExpression: String, nClass: String) =
+        SIG_PATTERN.matches(signatureExpression) && NCLASS_PATTERN.matches(nClass)
 
     private var byHash: Map<String, Entry> = emptyMap()
 
@@ -78,7 +81,7 @@ object PlayerConfig {
 
             val parsed = Entry(
                 signatureExpression = sig,
-                nExpression = buildNExpression(nClass),
+                nClass = nClass,
                 signatureTimestamp = sts
             )
             result[hash] = parsed
@@ -91,11 +94,4 @@ object PlayerConfig {
         return result
     }
 
-    /**
-     * The `n` transform is reached by constructing the player's own URL class and reading the
-     * parameter back out of it, which is how the player itself applies it.
-     */
-    private fun buildNExpression(nClass: String): String =
-        "(function(n){try{var u=new g.$nClass('https://x.googlevideo.com/videoplayback?n='+n,true);" +
-            "var t=u.get('n');return(t&&t!==n)?t:n;}catch(e){return n;}})(INPUT)"
 }

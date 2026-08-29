@@ -36,6 +36,18 @@ object Cipher {
         info = loaded
 
         webView = CipherWebView.create(context, loaded)
+        if (webView == null) {
+            // Discovery came up empty against this player. Pulling the curated list is the
+            // last resort, and only worth the round trip now that nothing else has worked.
+            Log.w(TAG, "discovery failed; falling back to the curated registry")
+            if (PlayerJs.refreshRegistry()) {
+                val retry = PlayerJs.load(context, forceRefresh = false)
+                if (retry != null) {
+                    info = retry
+                    webView = CipherWebView.create(context, retry)
+                }
+            }
+        }
         webView != null
     }
 
