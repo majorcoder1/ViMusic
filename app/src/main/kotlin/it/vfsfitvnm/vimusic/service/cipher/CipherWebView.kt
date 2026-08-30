@@ -174,7 +174,7 @@ class CipherWebView private constructor(private val webView: WebView) {
             val out = java.io.File(info.script.parentFile, "player_prepared.js")
             out.writeText(modified)
             out
-        }.onFailure { Log.e(TAG, "prepareScript failed: ${'$'}{it.message}", it) }.getOrNull()
+        }.onFailure { Log.e(TAG, "prepareScript failed: ${it.message}", it) }.getOrNull()
 
         /** Everything the discovery routine needs, handed over as one JSON literal. */
         private fun configJson(info: PlayerJs.Info): String = Json.encodeToString(

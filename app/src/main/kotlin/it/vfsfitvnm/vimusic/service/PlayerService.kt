@@ -887,7 +887,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             val token = runCatching {
                 poTokenGenerator.awaitWebClientPoToken(WarmUpVideoId, session)
             }.onFailure {
-                Log.w(TAG, "warm-up: poToken threw ${'$'}{it.javaClass.simpleName}: ${'$'}{it.message}")
+                Log.w(TAG, "warm-up: poToken threw ${it.javaClass.simpleName}: ${it.message}")
             }.getOrNull()
 
             Log.i(TAG, "warm-up done: cipher=$cipherReady token=${token != null}")
