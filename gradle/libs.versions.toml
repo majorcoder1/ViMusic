@@ -22,7 +22,7 @@ shimmer = "1.5.0"
 brotli = "0.1.2"
 desugaring = "2.1.5"
 junit = "4.13.2"
-okhttp = "4.12.0"
+okhttp = "5.5.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

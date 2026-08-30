@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "it.vfsfitvnm.vimusic"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "it.vfsfitvnm.vimusic"
