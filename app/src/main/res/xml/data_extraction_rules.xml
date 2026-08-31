@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The database holds the whole listening profile: every song played and how long for, liked
+    songs, playlists, cached lyrics, and every search typed. Cloud backup would copy that to
+    Google Drive, which is precisely what an account-free YouTube frontend exists to avoid.
+
+    Device transfer is a different matter: it moves data straight to the user's own next phone,
+    so the library survives a handset change rather than starting empty.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" />
+        <exclude domain="file" path="cipher/" />
+    </cloud-backup>
+
+    <device-transfer>
+        <exclude domain="file" path="cipher/" />
+    </device-transfer>
+</data-extraction-rules>

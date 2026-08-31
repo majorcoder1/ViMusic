@@ -81,9 +81,11 @@ class PlayerMediaBrowserService : MediaBrowserService(), ServiceConnection {
         clientUid: Int,
         rootHints: Bundle?
     ): BrowserRoot? {
+        // The uid checks are supplied by the framework and cannot be forged. The third arm used
+        // to compare a package *name*, which any app can claim -- see [CallerValidator].
         return if (clientUid == Process.myUid()
             || clientUid == Process.SYSTEM_UID
-            || clientPackageName == "com.google.android.projection.gearhead"
+            || CallerValidator.isTrusted(packageManager, clientPackageName)
         ) {
             bindService(intent<PlayerService>(), this, Context.BIND_AUTO_CREATE)
 

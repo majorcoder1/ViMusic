@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Pre-API-31 equivalent of data_extraction_rules.xml. There is no separate device-transfer
+    channel on these versions, so the database is excluded outright rather than risk it reaching
+    cloud backup.
+-->
+<full-backup-content>
+    <exclude domain="database" />
+    <exclude domain="file" path="cipher/" />
+</full-backup-content>
