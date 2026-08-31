@@ -75,6 +75,12 @@ import it.vfsfitvnm.vimusic.utils.secondary
 import it.vfsfitvnm.vimusic.utils.semiBold
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+/** How many of the most-played songs Quick Picks may seed itself from. */
+private const val SeedPoolSize = 20
+
+/** Used when nothing has been played yet, so the page is not empty on a fresh install. */
+private const val DefaultSeedVideoId = "J7p4bzqLvCw"
+
 @ExperimentalFoundationApi
 @ExperimentalAnimationApi
 @Composable
@@ -94,12 +100,23 @@ fun QuickPicks(
     var relatedPageResult by persist<Result<Innertube.RelatedPage?>?>(tag = "home/relatedPageResult")
 
     LaunchedEffect(Unit) {
-        Database.trending().distinctUntilChanged().collect { song ->
-            if ((song == null && relatedPageResult == null) || trending?.id != song?.id) {
+        Database.trending(SeedPoolSize).distinctUntilChanged().collect { candidates ->
+            // A seed is drawn at random from the most-played rather than always being the single
+            // top song, so one album in heavy rotation cannot own the page indefinitely.
+            //
+            // Once drawn it is kept for as long as it remains in the pool: this flow re-emits on
+            // every play event, and re-drawing each time would reshuffle the screen underneath
+            // whoever is reading it. Leaving home clears the persisted value, so the next visit
+            // draws again.
+            val current = trending
+            val seed = current?.takeIf { song -> candidates.any { it.id == song.id } }
+                ?: candidates.randomOrNull()
+
+            if (relatedPageResult == null || seed?.id != current?.id) {
                 relatedPageResult =
-                    Innertube.relatedPage(NextBody(videoId = (song?.id ?: "J7p4bzqLvCw")))
+                    Innertube.relatedPage(NextBody(videoId = seed?.id ?: DefaultSeedVideoId))
             }
-            trending = song
+            trending = seed
         }
     }
 

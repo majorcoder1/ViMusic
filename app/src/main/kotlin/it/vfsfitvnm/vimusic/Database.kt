@@ -435,10 +435,18 @@ interface Database {
     @Query("SELECT id, name FROM Artist LEFT JOIN SongArtistMap ON id = artistId WHERE songId = :songId")
     fun songArtistInfo(songId: String): List<Info>
 
+    /**
+     * The most-played songs, weighted so recent listening counts for more.
+     *
+     * Returns a pool rather than a single song. Quick Picks seeds itself from one of these, and
+     * seeding from the top song alone meant that anything in heavy rotation became the seed
+     * permanently -- the page then showed that one album and little else, which reinforced itself
+     * every time it was played.
+     */
     @Transaction
-    @Query("SELECT Song.* FROM Event JOIN Song ON Song.id = songId GROUP BY songId ORDER BY SUM(CAST(playTime AS REAL) / (((:now - timestamp) / 86400000) + 1)) DESC LIMIT 1")
+    @Query("SELECT Song.* FROM Event JOIN Song ON Song.id = songId GROUP BY songId ORDER BY SUM(CAST(playTime AS REAL) / (((:now - timestamp) / 86400000) + 1)) DESC LIMIT :limit")
     @RewriteQueriesToDropUnusedColumns
-    fun trending(now: Long = System.currentTimeMillis()): Flow<Song?>
+    fun trending(limit: Int, now: Long = System.currentTimeMillis()): Flow<List<Song>>
 
     @Query("SELECT COUNT (*) FROM Event")
     fun eventsCount(): Flow<Int>
