@@ -65,6 +65,8 @@ fun ArtistOverview(
     onAlbumClick: (String) -> Unit,
     onArtistClick: (String) -> Unit,
     onPlaylistClick: (String) -> Unit,
+    isSubscribed: Boolean,
+    onToggleSubscribed: () -> Unit,
     thumbnailContent: @Composable () -> Unit,
     headerContent: @Composable (textButton: (@Composable () -> Unit)?) -> Unit,
 ) {
@@ -129,6 +131,12 @@ fun ArtistOverview(
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
+
+                        SecondaryTextButton(
+                            text = if (isSubscribed) "Subscribed" else "Subscribe",
+                            onClick = onToggleSubscribed,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
                     }
                 }
 

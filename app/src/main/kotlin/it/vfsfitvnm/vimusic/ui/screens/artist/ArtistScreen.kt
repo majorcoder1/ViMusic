@@ -135,35 +135,7 @@ fun ArtistScreen(browseId: String) {
                                     .weight(1f)
                             )
 
-                            // Subscribing is local: there is no account here, so this marks the
-                            // artist as followed in this library and nothing leaves the device.
-                            val isSubscribed = artist?.bookmarkedAt != null
 
-                            SecondaryTextButton(
-                                text = if (isSubscribed) "Subscribed" else "Subscribe",
-                                onClick = {
-                                    val bookmarkedAt =
-                                        if (isSubscribed) null else System.currentTimeMillis()
-
-                                    query {
-                                        // Upsert rather than update: the row only exists once the
-                                        // artist page has loaded and been stored, so tapping this
-                                        // early used to silently do nothing at all.
-                                        Database.upsert(
-                                            artist?.copy(bookmarkedAt = bookmarkedAt)
-                                                ?: Artist(
-                                                    id = browseId,
-                                                    name = artistPage?.name,
-                                                    thumbnailUrl = artistPage?.thumbnail?.url,
-                                                    timestamp = System.currentTimeMillis(),
-                                                    bookmarkedAt = bookmarkedAt
-                                                )
-                                        )
-                                    }
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
 
                             HeaderIconButton(
                                 icon = R.drawable.share_social,
@@ -207,6 +179,27 @@ fun ArtistScreen(browseId: String) {
                             onAlbumClick = { albumRoute(it) },
                             onArtistClick = { artistRoute(it) },
                             onPlaylistClick = { playlistRoute(it) },
+                            isSubscribed = artist?.bookmarkedAt != null,
+                            onToggleSubscribed = {
+                                val bookmarkedAt =
+                                    if (artist?.bookmarkedAt == null) System.currentTimeMillis() else null
+
+                                query {
+                                    // Upsert rather than update: the row only exists once the
+                                    // artist page has loaded and been stored, so tapping this
+                                    // early used to silently do nothing at all.
+                                    Database.upsert(
+                                        artist?.copy(bookmarkedAt = bookmarkedAt)
+                                            ?: Artist(
+                                                id = browseId,
+                                                name = artistPage?.name,
+                                                thumbnailUrl = artistPage?.thumbnail?.url,
+                                                timestamp = System.currentTimeMillis(),
+                                                bookmarkedAt = bookmarkedAt
+                                            )
+                                    )
+                                }
+                            },
                             onViewAllSongsClick = { tabIndex = 1 },
                             onViewAllAlbumsClick = { tabIndex = 2 },
                             onViewAllSinglesClick = { tabIndex = 3 },
