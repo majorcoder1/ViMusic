@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,7 @@ import it.vfsfitvnm.vimusic.query
 import it.vfsfitvnm.vimusic.ui.components.LocalMenuState
 import it.vfsfitvnm.vimusic.ui.components.themed.Header
 import it.vfsfitvnm.vimusic.ui.components.themed.HeaderIconButton
+import it.vfsfitvnm.vimusic.ui.components.themed.SecondaryTextButton
 import it.vfsfitvnm.vimusic.ui.components.themed.HeaderPlaceholder
 import it.vfsfitvnm.vimusic.ui.components.themed.NonQueuedMediaItemMenu
 import it.vfsfitvnm.vimusic.ui.components.themed.Scaffold
@@ -133,24 +135,35 @@ fun ArtistScreen(browseId: String) {
                                     .weight(1f)
                             )
 
-                            HeaderIconButton(
-                                icon = if (artist?.bookmarkedAt == null) {
-                                    R.drawable.bookmark_outline
-                                } else {
-                                    R.drawable.bookmark
-                                },
-                                color = colorPalette.accent,
+                            // Subscribing is local: there is no account here, so this marks the
+                            // artist as followed in this library and nothing leaves the device.
+                            val isSubscribed = artist?.bookmarkedAt != null
+
+                            SecondaryTextButton(
+                                text = if (isSubscribed) "Subscribed" else "Subscribe",
                                 onClick = {
                                     val bookmarkedAt =
-                                        if (artist?.bookmarkedAt == null) System.currentTimeMillis() else null
+                                        if (isSubscribed) null else System.currentTimeMillis()
 
                                     query {
-                                        artist
-                                            ?.copy(bookmarkedAt = bookmarkedAt)
-                                            ?.let(Database::update)
+                                        // Upsert rather than update: the row only exists once the
+                                        // artist page has loaded and been stored, so tapping this
+                                        // early used to silently do nothing at all.
+                                        Database.upsert(
+                                            artist?.copy(bookmarkedAt = bookmarkedAt)
+                                                ?: Artist(
+                                                    id = browseId,
+                                                    name = artistPage?.name,
+                                                    thumbnailUrl = artistPage?.thumbnail?.url,
+                                                    timestamp = System.currentTimeMillis(),
+                                                    bookmarkedAt = bookmarkedAt
+                                                )
+                                        )
                                     }
                                 }
                             )
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             HeaderIconButton(
                                 icon = R.drawable.share_social,

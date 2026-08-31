@@ -175,31 +175,31 @@ interface Database {
 
     @Query("""
         SELECT Artist.* FROM Artist
-        JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
-        JOIN Song ON Song.id = SongArtistMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
+        LEFT JOIN Song ON Song.id = SongArtistMap.songId
+        WHERE Artist.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Artist.id
-        ORDER BY Artist.name COLLATE NOCASE DESC
+        ORDER BY Artist.bookmarkedAt IS NULL, Artist.name COLLATE NOCASE DESC
     """)
     fun artistsByNameDesc(): Flow<List<Artist>>
 
     @Query("""
         SELECT Artist.* FROM Artist
-        JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
-        JOIN Song ON Song.id = SongArtistMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
+        LEFT JOIN Song ON Song.id = SongArtistMap.songId
+        WHERE Artist.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Artist.id
-        ORDER BY Artist.name COLLATE NOCASE ASC
+        ORDER BY Artist.bookmarkedAt IS NULL, Artist.name COLLATE NOCASE ASC
     """)
     fun artistsByNameAsc(): Flow<List<Artist>>
 
     @Query("""
         SELECT Artist.* FROM Artist
-        JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
-        JOIN Song ON Song.id = SongArtistMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
+        LEFT JOIN Song ON Song.id = SongArtistMap.songId
+        WHERE Artist.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Artist.id
-        ORDER BY Artist.ROWID DESC
+        ORDER BY Artist.bookmarkedAt IS NULL, Artist.ROWID DESC
     """)
     fun artistsByRowIdDesc(): Flow<List<Artist>>
 
@@ -220,11 +220,11 @@ interface Database {
 
     @Query("""
         SELECT Artist.* FROM Artist
-        JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
-        JOIN Song ON Song.id = SongArtistMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongArtistMap ON Artist.id = SongArtistMap.artistId
+        LEFT JOIN Song ON Song.id = SongArtistMap.songId
+        WHERE Artist.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Artist.id
-        ORDER BY Artist.ROWID ASC
+        ORDER BY Artist.bookmarkedAt IS NULL, Artist.ROWID ASC
     """)
     fun artistsByRowIdAsc(): Flow<List<Artist>>
 
@@ -254,61 +254,61 @@ interface Database {
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.title COLLATE NOCASE ASC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.title COLLATE NOCASE ASC
     """)
     fun albumsByTitleAsc(): Flow<List<Album>>
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.year ASC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.year ASC
     """)
     fun albumsByYearAsc(): Flow<List<Album>>
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.ROWID ASC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.ROWID ASC
     """)
     fun albumsByRowIdAsc(): Flow<List<Album>>
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.title COLLATE NOCASE DESC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.title COLLATE NOCASE DESC
     """)
     fun albumsByTitleDesc(): Flow<List<Album>>
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.year DESC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.year DESC
     """)
     fun albumsByYearDesc(): Flow<List<Album>>
 
     @Query("""
         SELECT Album.* FROM Album
-        JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
-        JOIN Song ON Song.id = SongAlbumMap.songId
-        WHERE Song.totalPlayTimeMs > 0
+        LEFT JOIN SongAlbumMap ON Album.id = SongAlbumMap.albumId
+        LEFT JOIN Song ON Song.id = SongAlbumMap.songId
+        WHERE Album.bookmarkedAt IS NOT NULL OR Song.totalPlayTimeMs > 0
         GROUP BY Album.id
-        ORDER BY Album.ROWID DESC
+        ORDER BY Album.bookmarkedAt IS NULL, Album.ROWID DESC
     """)
     fun albumsByRowIdDesc(): Flow<List<Album>>
 
