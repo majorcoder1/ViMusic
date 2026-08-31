@@ -9,7 +9,7 @@ import it.vfsfitvnm.innertube.models.MusicCarouselShelfRenderer
 import it.vfsfitvnm.innertube.models.MusicShelfRenderer
 import it.vfsfitvnm.innertube.models.SectionListRenderer
 import it.vfsfitvnm.innertube.models.bodies.BrowseBody
-import it.vfsfitvnm.innertube.utils.findSectionByTitle
+import it.vfsfitvnm.innertube.utils.findSectionByTitleContaining
 import it.vfsfitvnm.innertube.utils.from
 import it.vfsfitvnm.innertube.utils.runCatchingNonCancellable
 
@@ -20,7 +20,10 @@ suspend fun Innertube.artistPage(body: BrowseBody): Result<Innertube.ArtistPage>
             mask("contents,header")
         }.body<BrowseResponse>()
 
-        fun findSectionByTitle(text: String): SectionListRenderer.Content? {
+        // Matched on a substring, not equality: YouTube titles these "Top songs" and
+        // "Singles & EPs", so the old exact lookups for "Songs" and "Singles" quietly found
+        // nothing and left the page showing albums alone.
+        fun section(text: String): SectionListRenderer.Content? {
             return response
                 .contents
                 ?.singleColumnBrowseResultsRenderer
@@ -29,12 +32,15 @@ suspend fun Innertube.artistPage(body: BrowseBody): Result<Innertube.ArtistPage>
                 ?.tabRenderer
                 ?.content
                 ?.sectionListRenderer
-                ?.findSectionByTitle(text)
+                ?.findSectionByTitleContaining(text)
         }
 
-        val songsSection = findSectionByTitle("Songs")?.musicShelfRenderer
-        val albumsSection = findSectionByTitle("Albums")?.musicCarouselShelfRenderer
-        val singlesSection = findSectionByTitle("Singles")?.musicCarouselShelfRenderer
+        val songsSection = section("songs")?.musicShelfRenderer
+        val albumsSection = section("albums")?.musicCarouselShelfRenderer
+        val singlesSection = section("singles")?.musicCarouselShelfRenderer
+        val similarArtistsSection = section("might also like")?.musicCarouselShelfRenderer
+        val playlistsSection = section("playlists")?.musicCarouselShelfRenderer
+        val featuredOnSection = section("featured on")?.musicCarouselShelfRenderer
 
         Innertube.ArtistPage(
             name = response
@@ -109,5 +115,18 @@ suspend fun Innertube.artistPage(body: BrowseBody): Result<Innertube.ArtistPage>
                 ?.buttonRenderer
                 ?.navigationEndpoint
                 ?.browseEndpoint,
+            // Four shelves YouTube has always returned and nothing was reading.
+            similarArtists = similarArtistsSection
+                ?.contents
+                ?.mapNotNull(MusicCarouselShelfRenderer.Content::musicTwoRowItemRenderer)
+                ?.mapNotNull(Innertube.ArtistItem::from),
+            playlists = playlistsSection
+                ?.contents
+                ?.mapNotNull(MusicCarouselShelfRenderer.Content::musicTwoRowItemRenderer)
+                ?.mapNotNull(Innertube.PlaylistItem::from),
+            featuredOn = featuredOnSection
+                ?.contents
+                ?.mapNotNull(MusicCarouselShelfRenderer.Content::musicTwoRowItemRenderer)
+                ?.mapNotNull(Innertube.PlaylistItem::from),
         )
     }

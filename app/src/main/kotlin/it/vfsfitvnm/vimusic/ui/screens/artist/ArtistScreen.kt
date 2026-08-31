@@ -43,6 +43,8 @@ import it.vfsfitvnm.vimusic.ui.items.AlbumItemPlaceholder
 import it.vfsfitvnm.vimusic.ui.items.SongItem
 import it.vfsfitvnm.vimusic.ui.items.SongItemPlaceholder
 import it.vfsfitvnm.vimusic.ui.screens.albumRoute
+import it.vfsfitvnm.vimusic.ui.screens.artistRoute
+import it.vfsfitvnm.vimusic.ui.screens.playlistRoute
 import it.vfsfitvnm.vimusic.ui.screens.globalRoutes
 import it.vfsfitvnm.vimusic.ui.screens.searchresult.ItemsPage
 import it.vfsfitvnm.vimusic.ui.styling.Dimensions
@@ -190,6 +192,8 @@ fun ArtistScreen(browseId: String) {
                             thumbnailContent = thumbnailContent,
                             headerContent = headerContent,
                             onAlbumClick = { albumRoute(it) },
+                            onArtistClick = { artistRoute(it) },
+                            onPlaylistClick = { playlistRoute(it) },
                             onViewAllSongsClick = { tabIndex = 1 },
                             onViewAllAlbumsClick = { tabIndex = 2 },
                             onViewAllSinglesClick = { tabIndex = 3 },

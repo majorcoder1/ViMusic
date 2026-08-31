@@ -22,6 +22,32 @@ internal fun SectionListRenderer.findSectionByTitle(text: String): SectionListRe
     }
 }
 
+/**
+ * Finds a section whose title *contains* [text], ignoring case.
+ *
+ * Exact matching broke silently as YouTube renamed shelves: an artist's songs are under "Top songs"
+ * and their singles under "Singles & EPs", so lookups for "Songs" and "Singles" found nothing and
+ * those sections simply vanished from the page with no error anywhere.
+ */
+internal fun SectionListRenderer.findSectionByTitleContaining(text: String): SectionListRenderer.Content? {
+    return contents?.find { content ->
+        val title = content
+            .musicCarouselShelfRenderer
+            ?.header
+            ?.musicCarouselShelfBasicHeaderRenderer
+            ?.title
+            ?: content
+                .musicShelfRenderer
+                ?.title
+
+        title
+            ?.runs
+            ?.firstOrNull()
+            ?.text
+            ?.contains(text, ignoreCase = true) == true
+    }
+}
+
 internal fun SectionListRenderer.findSectionByStrapline(text: String): SectionListRenderer.Content? {
     return contents?.find { content ->
         content

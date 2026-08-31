@@ -189,6 +189,10 @@ object Innertube {
         val albums: List<AlbumItem>?,
         val albumsEndpoint: NavigationEndpoint.Endpoint.Browse?,
         val singles: List<AlbumItem>?,
+        /** YouTube's "Fans might also like" -- artists in the same vein. */
+        val similarArtists: List<ArtistItem>? = null,
+        val playlists: List<PlaylistItem>? = null,
+        val featuredOn: List<PlaylistItem>? = null,
         val singlesEndpoint: NavigationEndpoint.Endpoint.Browse?,
     )
 
