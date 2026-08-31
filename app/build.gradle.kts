@@ -13,7 +13,11 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "it.vfsfitvnm.vimusic"
+        // The source package stays it.vfsfitvnm.vimusic -- this is a fork, and the code is
+        // still theirs. The application id is the identity on a device and in a store, and
+        // that one has to be ours: the original already occupies the old id on F-Droid, and
+        // two apps cannot share it.
+        applicationId = "net.m4j.ViMusic"
         minSdk = 23
         targetSdk = 36
         versionCode = 21

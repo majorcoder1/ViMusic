@@ -129,9 +129,9 @@ import kotlinx.coroutines.runBlocking
 
 @Suppress("DEPRECATION")
 /** Custom transport action surfaced on the Android Auto now-playing screen. */
-internal const val ACTION_START_RADIO = "it.vfsfitvnm.vimusic.START_RADIO"
-internal const val ACTION_SHUFFLE = "it.vfsfitvnm.vimusic.SHUFFLE"
-internal const val ACTION_REPEAT = "it.vfsfitvnm.vimusic.REPEAT"
+internal const val ACTION_START_RADIO = "net.m4j.ViMusic.START_RADIO"
+internal const val ACTION_SHUFFLE = "net.m4j.ViMusic.SHUFFLE"
+internal const val ACTION_REPEAT = "net.m4j.ViMusic.REPEAT"
 
 // Big enough for a car display without being wasteful on a phone notification.
 private const val NowPlayingArtworkSize = 1024
@@ -1249,10 +1249,10 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             )
 
         companion object {
-            val pause = Action("it.vfsfitvnm.vimusic.pause")
-            val play = Action("it.vfsfitvnm.vimusic.play")
-            val next = Action("it.vfsfitvnm.vimusic.next")
-            val previous = Action("it.vfsfitvnm.vimusic.previous")
+            val pause = Action("net.m4j.ViMusic.pause")
+            val play = Action("net.m4j.ViMusic.play")
+            val next = Action("net.m4j.ViMusic.next")
+            val previous = Action("net.m4j.ViMusic.previous")
         }
     }
 
