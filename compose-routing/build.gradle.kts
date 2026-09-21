@@ -1,19 +1,14 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "it.vfsfitvnm.compose.routing"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 23
-    }
-
-    sourceSets.all {
-        kotlin.srcDir("src/$name/kotlin")
     }
 
     buildFeatures {

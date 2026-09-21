@@ -1,12 +1,12 @@
 [versions]
-agp = "8.13.2"
+agp = "9.4.1"
 kotlin = "2.3.21"
 ksp = "2.3.11"
 
-compose-bom = "2026.06.01"   # 2026.08+ (Compose 1.12) requires AGP 9.1; this build is on 8.13
+compose-bom = "2026.09.00"
 activity = "1.13.0"
-core-ktx = "1.18.0"
-lifecycle = "2.10.0"
+core-ktx = "1.19.0"
+lifecycle = "2.11.0"
 annotation = "1.10.0"
 palette = "1.0.0"
 
