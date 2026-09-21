@@ -123,7 +123,9 @@ class CipherWebView private constructor(private val webView: WebView) {
                             nClass = nClass,
                             sts = info.signatureTimestamp
                         )
-                        if (resumed.compareAndSet(false, true)) ready.complete(hasSignature || hasN)
+                        // Both halves, not either: a signature-less cipher still plays nothing,
+                        // and calling it ready would skip the registry refresh that can supply it.
+                        if (resumed.compareAndSet(false, true)) ready.complete(hasSignature && hasN)
                     }
                 }, "CipherReady")
 

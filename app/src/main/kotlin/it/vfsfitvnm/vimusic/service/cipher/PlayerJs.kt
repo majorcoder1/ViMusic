@@ -55,9 +55,12 @@ object PlayerJs {
      * Call sites of the form `name(int,int,…)`. The signature descrambler is one of these; the
      * pair of integers selects the operation. Names and pairs are searched as a cross product
      * because the descrambler's own call site is not always spelled out in the source.
+     *
+     * The lookbehind stands in for `\b`, which never matches before a `$` because `$` is not a
+     * word character. Players do name the descrambler that way -- `4fd832e7` calls it `$P`.
      */
     private val dispatcherPattern =
-        Regex("""\b([A-Za-z_$][A-Za-z0-9_$]{0,4})\(\s*(\d{1,6})\s*,\s*(\d{1,6})\s*,""")
+        Regex("""(?<![A-Za-z0-9_$])([A-Za-z_$][A-Za-z0-9_$]{0,4})\(\s*(\d{1,6})\s*,\s*(\d{1,6})\s*,""")
 
     // Bounds the probe. Every candidate is one function call, so even the ceiling is milliseconds.
     private const val MAX_NAMES = 64
