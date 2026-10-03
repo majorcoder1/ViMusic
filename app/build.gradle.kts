@@ -10,7 +10,11 @@ plugins {
 
 android {
     namespace = "it.vfsfitvnm.vimusic"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
 
     defaultConfig {
         // The source package stays it.vfsfitvnm.vimusic -- this is a fork, and the code is
@@ -20,8 +24,8 @@ android {
         applicationId = "net.m4j.ViMusic"
         minSdk = 23
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.6.0"
+        versionCode = 22
+        versionName = "0.6.1"
     }
 
     // Release signing is read from keystore.properties, which is deliberately untracked: the
