@@ -102,3 +102,9 @@ GPL-3.0, inherited from the original project. See [LICENSE](./LICENSE).
 This project and its contents are not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC or any of its affiliates and subsidiaries.
 
 Any trademark, service mark, trade name, or other intellectual property rights used in this project are owned by the respective owners.
+
+## Support
+
+This project is free and open source. If it is useful to you, you can support my work with a donation:
+
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/majorcoder1/donate)
