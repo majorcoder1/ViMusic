@@ -1,20 +1,20 @@
 [versions]
-agp = "8.13.2"
+agp = "9.5.0"
 kotlin = "2.3.21"
-ksp = "2.3.11"
+ksp = "2.3.12"
 
-compose-bom = "2026.06.01"   # 2026.08+ (Compose 1.12) requires AGP 9.1; this build is on 8.13
+compose-bom = "2026.09.00"
 activity = "1.13.0"
-core-ktx = "1.18.0"
-lifecycle = "2.10.0"
-annotation = "1.10.0"
+core-ktx = "1.19.1"
+lifecycle = "2.11.0"
+annotation = "1.11.0"
 palette = "1.0.0"
 
 media3 = "1.11.1"
 room = "2.8.5"
 
-ktor = "3.6.0"
-serialization = "1.11.0"
+ktor = "3.6.1"
+serialization = "1.12.0"
 coroutines = "1.11.0"
 
 coil = "2.7.0"
@@ -22,7 +22,7 @@ shimmer = "1.5.0"
 brotli = "0.1.2"
 desugaring = "2.1.5"
 junit = "4.13.2"
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

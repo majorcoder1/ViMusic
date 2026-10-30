@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "it.vfsfitvnm.compose.persist"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 23
