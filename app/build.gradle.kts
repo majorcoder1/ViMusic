@@ -24,8 +24,8 @@ android {
         applicationId = "net.m4j.ViMusic"
         minSdk = 23
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.6.1"
+        versionCode = 23
+        versionName = "0.6.2"
     }
 
     // Release signing is read from keystore.properties, which is deliberately untracked: the

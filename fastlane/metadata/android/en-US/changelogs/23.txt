@@ -1,0 +1,5 @@
+Updated libraries: newer Compose, AndroidX, Ktor, OkHttp and build tools.
+No known security vulnerabilities were outstanding; these are routine updates.
+
+Fixed song playback on YouTube's current player, which names its signature
+function in a way the old search could not see.
